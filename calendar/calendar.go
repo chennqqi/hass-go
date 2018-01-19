@@ -57,7 +57,7 @@ func (c *Calendar) update(events map[string]string) error {
 func (c *Calendar) download() error {
 	parser := ics.New()
 	input := parser.GetInputChan()
-	dcals := dynamic.Dynamic{c.viper.Get("calendar")}
+	dcals := dynamic.Dynamic{Item: c.viper.Get("calendar")}
 	for _, c := range dcals.ArrayIter() {
 		input <- c.Get("url").AsString()
 	}

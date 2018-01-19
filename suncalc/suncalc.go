@@ -21,21 +21,21 @@ var acos = math.Acos
 
 // date/time constants and conversions
 const (
-	dayMs = 1000 * 60 * 60 * 24
-	j1970 = 2440588
-	j2000 = 2451545
+	daySeconds = 60 * 60 * 24
+	j1970      = 2440588
+	j2000      = 2451545
 )
 
 func toJulian(date time.Time) float64 {
-	return float64(date.Unix()/dayMs) - 0.5 + float64(j1970)
+	return float64(date.Unix()/daySeconds) - 0.5 + float64(j1970)
 }
 
 func fromJulian(j float64) time.Time {
-	return time.Unix(int64((j+0.5-j1970)*dayMs), 0)
+	return time.Unix(int64((j+0.5-float64(j1970))*float64(daySeconds)), 0)
 }
 
 func toDays(date time.Time) float64 {
-	return toJulian(date) - j2000
+	return toJulian(date) - float64(j2000)
 }
 
 // general calculations for position
@@ -111,35 +111,48 @@ func getPosition(date time.Time, lat float64, lng float64) (outAzimuth float64, 
 	return
 }
 
-// sun times configuration (angle, morning name, evening name)
-type timecfg struct {
-	angle       float64
-	firstTitle  string
-	firstDescr  string
-	secondTitle string
-	secondDescr string
-}
-
-// Ctime is an entry that has Title, Description and Time
-// One of the entries is { "sunrise", "top edge of the sun appears on the horizon", 6:05 }
-type Ctime struct {
+type Cmoment struct {
 	title string
 	descr string
-	time  time.Time
+	from  time.Time
+	to    time.Time
+}
+type momentcfg struct {
+	title string
+	descr string
+	from  string
+	to    string
 }
 
-var timecfgs = []timecfg{
-	{-0.833, "sunrise", "top edge of the sun appears on the horizon", "sunset", "sun disappears below the horizon, evening civil twilight starts"},
-	{-0.3, "sunrise:end", "bottom edge of the sun touches the horizon", "sunset:start", "bottom edge of the sun touches the horizon"},
-	{-6, "dawn", "morning nautical twilight ends, morning civil twilight starts", "dusk", "evening nautical twilight starts"},
-	{-12, "nautical:dawn", "morning nautical twilight starts", "nautical:dusk", "evening astronomical twilight starts"},
-	{-18, "night:end", "morning astronomical twilight starts", "night", "dark enough for astronomical observations"},
-	{6, "goldenhour:end", "morning golden hour ends", "goldenhour", "evening golden hour starts (soft light, best time for photography)"},
+type anglecfg struct {
+	angle float64
+	rise  string
+	set   string
 }
 
-// AddTime adds a custom time to the times config
-func AddTime(angle float64, riseTitle string, riseDescr string, setTitle string, setDescr string) {
-	timecfgs = append(timecfgs, timecfg{angle, riseTitle, riseDescr, setTitle, setDescr})
+var anglecfgs = []anglecfg{
+	{-18.0, "astronomical:dawn", "night:dusk"},
+	{-12.0, "nautical:dawn", "astronomical:dusk"},
+	{-6.0, "civil:dawn", "nautical:dusk"},
+	{-0.833, "sunrise", "civil:dusk"},
+	{-0.3, "sunrise:end", "sunset"},
+}
+
+var momentcfgs = []momentcfg{
+	{"night:dawn", "midnight to twilight, 2nd part of the night", "night:darkest:end:today", "astronomical:dawn"},
+	{"astronomical:dawn", "morning astronomical twilight", "astronomical:dawn", "nautical:dawn"},
+	{"nautical:dawn", "morning nautical twilight", "nautical:dawn", "civil:dawn"},
+	{"civil:dawn", "morning civil twilight", "civil:dawn", "sunrise"},
+	{"sunrise", "top edge of the sun appears on the horizon until it is fully visible", "sunrise", "sunrise:end"},
+	{"sun:morning", "sun has risen and moves towards noon", "sunrise:end", "sun:noon:begin"},
+	{"sun:noon", "sun is in the highest position", "sun:noon:begin", "sun:noon:end"},
+	{"sun:afternoon", "sun is past noon and moves towards sunset", "sun:noon:end", "sunset"},
+	{"sunset", "bottom edge of the sun touches the horizon until it dissapears under the horizon", "sunset", "civil:dusk"},
+	{"civil:dusk", "evening civil twilight", "civil:dusk", "nautical:dusk"},
+	{"nautical:dusk", "evening nautical twilight", "nautical:dusk", "astronomical:dusk"},
+	{"astronomical:dusk", "evening astronomical twilight", "astronomical:dusk", "night:dusk"},
+	{"night:dusk", "end of dusk, evening until midnight", "night:dusk", "night:darkest:begin"},
+	{"night:darkest", "midnight, darkest moment of the night", "night:darkest:begin", "night:darkest:end:tomorrow"},
 }
 
 // calculations for sun times
@@ -169,9 +182,8 @@ func getSetJ(h float64, lw float64, phi float64, dec float64, n float64, M float
 	return solarTransitJ(a, M, L)
 }
 
-// Get calculates sun/moon rise/set times for a given date and latitude/longitude
-func Get(date time.Time, lat float64, lng float64) (result []Ctime) {
-
+// GetMoments calculates moments according to momentcfgs
+func GetMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
 	lw := rad * -lng
 	phi := rad * lat
 
@@ -185,30 +197,42 @@ func Get(date time.Time, lat float64, lng float64) (result []Ctime) {
 
 	Jnoon := solarTransitJ(ds, M, L)
 
-	result = []Ctime{}
-
-	solarNoon := fromJulian(Jnoon)
-	eSolarNoon := Ctime{"sun:noon", "sun is in the highest position", solarNoon}
-	result = append(result, eSolarNoon)
-
-	naDir := fromJulian(Jnoon - 0.5)
-	eNaDor := Ctime{"night:darkest", "darkest moment of the night", naDir}
-	result = append(result, eNaDor)
-
-	for _, time := range timecfgs {
-
-		Jset := getSetJ(time.angle*rad, lw, phi, dec, n, M, L)
+	mtimes := map[string]time.Time{}
+	midnight := fromJulian(Jnoon - 0.5)
+	mtimes["night:darkest:begin"] = hoursLater(midnight, 24.0-0.15)
+	mtimes["night:darkest:end:today"] = hoursLater(midnight, +0.15)
+	mtimes["night:darkest:end:tomorrow"] = hoursLater(midnight, 24.0+0.15)
+	noon := fromJulian(Jnoon)
+	mtimes["sun:noon:begin"] = hoursLater(noon, -0.15)
+	mtimes["sun:noon:end"] = hoursLater(noon, +0.15)
+	for _, a := range anglecfgs {
+		Jset := getSetJ(a.angle*rad, lw, phi, dec, n, M, L)
 		Jrise := Jnoon - (Jset - Jnoon)
-
-		t0 := fromJulian(Jrise)
-		e0 := Ctime{time.firstTitle, time.firstDescr, t0}
-		t1 := fromJulian(Jset)
-		e1 := Ctime{time.secondTitle, time.secondDescr, t1}
-		result = append(result, e0)
-		result = append(result, e1)
+		mtimes[a.rise] = fromJulian(Jrise)
+		mtimes[a.set] = fromJulian(Jset)
 	}
 
-	return result
+	// type Cmoment struct {
+	// 	title string
+	// 	descr string
+	// 	from  time.Time
+	// 	to    time.Time
+	// }
+
+	moments := []Cmoment{}
+	for _, m := range momentcfgs {
+		t0 := mtimes[m.from]
+		t1 := mtimes[m.to]
+
+		moment := Cmoment{}
+		moment.descr = m.descr
+		moment.title = m.title
+		moment.from = t0
+		moment.to = t1
+		moments = append(moments, moment)
+	}
+
+	return moments
 }
 
 // moon calculations, based on http://aa.quae.nl/en/reken/hemelpositie.html formulas
@@ -285,7 +309,7 @@ func getMoonIllumination(date time.Time) (fraction float64, phase float64, angle
 }
 
 func hoursLater(date time.Time, h float64) time.Time {
-	return time.Unix(date.Unix()+int64(h)*dayMs/24, 0)
+	return time.Unix(date.Unix()+int64(h*float64(daySeconds)/24.0), 0)
 }
 
 // calculations for moon rise/set times are based on http://www.stargazing.net/kepler/moonrise.html article
