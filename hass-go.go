@@ -33,4 +33,16 @@ package main
 
 func main() {
 
+	// Create:
+	// - Calendar
+	// - IM
+	// - Weather
+	// - Sensors
+	// - Lights
+
+	// All states are tracked and updated using maps, we have 3 of them:
+	// - sstates *map[string]string
+	// - fstates *map[string]float64
+	// - tstates *map[string]time.Time
+
 }

@@ -7,6 +7,48 @@ import (
 	"time"
 )
 
+// The angle is mirrored in the rising and setting moments of the day centered around noon
+type anglecfg struct {
+	angle float64
+	rise  string
+	set   string
+}
+
+// The list of angles we are interested in as 'events'
+var anglecfgs = []anglecfg{
+	{-18.0, "astronomical:dawn", "night:dusk"},
+	{-12.0, "nautical:dawn", "astronomical:dusk"},
+	{-6.0, "civil:dawn", "nautical:dusk"},
+	{-0.833, "sunrise", "civil:dusk"},
+	{-0.3, "sunrise:end", "sunset"},
+}
+
+// A moment is a time period with a 'from' and 'to' marked with a 'title' and 'description'
+// 'title' is of the format 'primary:secondary:begin|end{:today|tomorrow}",
+type momentcfg struct {
+	title string
+	descr string
+	begin string
+	end   string
+}
+
+var momentcfgs = []momentcfg{
+	{"night:dawn", "midnight to twilight, 2nd part of the night", "night:darkest:end:today", "astronomical:dawn"},
+	{"astronomical:dawn", "morning astronomical twilight", "astronomical:dawn", "nautical:dawn"},
+	{"nautical:dawn", "morning nautical twilight", "nautical:dawn", "civil:dawn"},
+	{"civil:dawn", "morning civil twilight", "civil:dawn", "sunrise"},
+	{"sunrise", "top edge of the sun appears on the horizon until it is fully visible", "sunrise", "sunrise:end"},
+	{"sun:morning", "sun has risen and moves towards noon", "sunrise:end", "sun:noon:begin"},
+	{"sun:noon", "sun is in the highest position", "sun:noon:begin", "sun:noon:end"},
+	{"sun:afternoon", "sun is past noon and moves towards sunset", "sun:noon:end", "sunset"},
+	{"sunset", "bottom edge of the sun touches the horizon until it dissapears under the horizon", "sunset", "civil:dusk"},
+	{"civil:dusk", "evening civil twilight", "civil:dusk", "nautical:dusk"},
+	{"nautical:dusk", "evening nautical twilight", "nautical:dusk", "astronomical:dusk"},
+	{"astronomical:dusk", "evening astronomical twilight", "astronomical:dusk", "night:dusk"},
+	{"night:dusk", "end of dusk, evening until midnight", "night:dusk", "night:darkest:begin"},
+	{"night:darkest", "midnight, darkest moment of the night", "night:darkest:begin", "night:darkest:end:tomorrow"},
+}
+
 const (
 	pi  = math.Pi
 	rad = pi / 180.0
@@ -111,50 +153,6 @@ func getPosition(date time.Time, lat float64, lng float64) (outAzimuth float64, 
 	return
 }
 
-type Cmoment struct {
-	title string
-	descr string
-	from  time.Time
-	to    time.Time
-}
-type momentcfg struct {
-	title string
-	descr string
-	from  string
-	to    string
-}
-
-type anglecfg struct {
-	angle float64
-	rise  string
-	set   string
-}
-
-var anglecfgs = []anglecfg{
-	{-18.0, "astronomical:dawn", "night:dusk"},
-	{-12.0, "nautical:dawn", "astronomical:dusk"},
-	{-6.0, "civil:dawn", "nautical:dusk"},
-	{-0.833, "sunrise", "civil:dusk"},
-	{-0.3, "sunrise:end", "sunset"},
-}
-
-var momentcfgs = []momentcfg{
-	{"night:dawn", "midnight to twilight, 2nd part of the night", "night:darkest:end:today", "astronomical:dawn"},
-	{"astronomical:dawn", "morning astronomical twilight", "astronomical:dawn", "nautical:dawn"},
-	{"nautical:dawn", "morning nautical twilight", "nautical:dawn", "civil:dawn"},
-	{"civil:dawn", "morning civil twilight", "civil:dawn", "sunrise"},
-	{"sunrise", "top edge of the sun appears on the horizon until it is fully visible", "sunrise", "sunrise:end"},
-	{"sun:morning", "sun has risen and moves towards noon", "sunrise:end", "sun:noon:begin"},
-	{"sun:noon", "sun is in the highest position", "sun:noon:begin", "sun:noon:end"},
-	{"sun:afternoon", "sun is past noon and moves towards sunset", "sun:noon:end", "sunset"},
-	{"sunset", "bottom edge of the sun touches the horizon until it dissapears under the horizon", "sunset", "civil:dusk"},
-	{"civil:dusk", "evening civil twilight", "civil:dusk", "nautical:dusk"},
-	{"nautical:dusk", "evening nautical twilight", "nautical:dusk", "astronomical:dusk"},
-	{"astronomical:dusk", "evening astronomical twilight", "astronomical:dusk", "night:dusk"},
-	{"night:dusk", "end of dusk, evening until midnight", "night:dusk", "night:darkest:begin"},
-	{"night:darkest", "midnight, darkest moment of the night", "night:darkest:begin", "night:darkest:end:tomorrow"},
-}
-
 // calculations for sun times
 
 const (
@@ -182,7 +180,18 @@ func getSetJ(h float64, lw float64, phi float64, dec float64, n float64, M float
 	return solarTransitJ(a, M, L)
 }
 
-// GetMoments calculates moments according to momentcfgs
+// Cmoment is a time period (from - to) with a title and description
+// For example "sunrise", "top edge of the sun appears on the horizon until it is fully visible"
+// with a 'begin' (time.Time) and an 'end' (time.Time).
+// The whole array spans a full day starting at midnight (0:00) the morning, noon, evening until midnight.
+type Cmoment struct {
+	title string
+	descr string
+	start time.Time
+	end   time.Time
+}
+
+// GetMoments returns the current day of Cmoment items (see comment on Cmoment)
 func GetMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
 	lw := rad * -lng
 	phi := rad * lat
@@ -221,14 +230,14 @@ func GetMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
 
 	moments := []Cmoment{}
 	for _, m := range momentcfgs {
-		t0 := mtimes[m.from]
-		t1 := mtimes[m.to]
+		t0 := mtimes[m.begin]
+		t1 := mtimes[m.end]
 
 		moment := Cmoment{}
 		moment.descr = m.descr
 		moment.title = m.title
-		moment.from = t0
-		moment.to = t1
+		moment.start = t0
+		moment.end = t1
 		moments = append(moments, moment)
 	}
 

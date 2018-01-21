@@ -52,6 +52,19 @@ func (c *Client) DetermineRain(d darksky.DataPoint) {
 			fmt.Printf("Rain: %s\n", e.Get("name").AsString())
 		}
 	}
+}
+
+func (c *Client) CreateReport(d darksky.DataPoint) {
+
+	// Report is like this:
+	//   sunrise   (6-8): Fog, Soft breeze, 10 Celcius (Cool)
+	//   morning   (8-10): Light Drizzle, Soft breeze, 13 Celcius (Cool)
+	//   morning   (10-12):
+	//   noon      (12-14):
+	//   afternoon (14-16):
+	//   afternoon (16-18):
+	//   evening   (18-20):
+	//
 
 }
 

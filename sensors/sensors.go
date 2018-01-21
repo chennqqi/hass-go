@@ -7,32 +7,37 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Sensors API
-// - SetRain(rain int)
-// - SetWind(wind int)
-// - SetClouds(clouds int)
-// - SetTemperature(celcius int)
-
-// - SetCalEvent(event string)
-
-// - UpdateToHASS
-
-type sensor struct {
-	name   string
-	update bool
-	state  string
-	states []string
+type sensorStateAsString struct {
+	name           string
+	typeof         string
+	unit           string
+	update         bool
+	defaultState   string
+	possibleStates []string
+}
+type sensorStateAsFloat struct {
+	name         string
+	typeof       string
+	unit         string
+	update       bool
+	defaultState float64
+	min          float64
+	max          float64
 }
 
+// Sensors is an instance to track sensor state
 type Sensors struct {
-	viper   *viper.Viper
-	sensors map[string]*sensor
+	viper    *viper.Viper
+	ssensors map[string]*sensorStateAsString
+	fsensors map[string]*sensorStateAsFloat
 }
 
+// New will return a new instance of 'Sensors'
 func New() (*Sensors, error) {
 	s := &Sensors{}
 	s.viper = viper.New()
-	s.sensors = map[string]*sensor{}
+	s.ssensors = map[string]*sensorStateAsString{}
+	s.fsensors = map[string]*sensorStateAsFloat{}
 
 	// Viper command-line package
 	s.viper.SetConfigName("hass-go-sensors")        // name of config file (without extension)
@@ -43,32 +48,41 @@ func New() (*Sensors, error) {
 		return nil, err
 	}
 
-	sensors := dynamic.Dynamic{s.viper.Get("sensor")}
+	sensors := dynamic.Dynamic{Item: s.viper.Get("sensor")}
 	for _, e := range sensors.ArrayIter() {
-		o := &sensor{}
-		o.name = e.Get("name").AsString()
-		o.update = true
-		o.state = e.Get("default").AsString()
-		s.sensors[o.name] = o
+		typeof := e.Get("typeof").AsString()
+		if typeof == "string" {
+			o := &sensorStateAsString{}
+			o.name = e.Get("name").AsString()
+			o.typeof = typeof
+			o.unit = e.Get("unit").AsString()
+			o.update = true
+			o.possibleStates = []string{}
+			o.defaultState = e.Get("default").AsString()
+			possibleStates := dynamic.Dynamic{Item: e.Get("states")}
+			for _, state := range possibleStates.ArrayIter() {
+				o.possibleStates = append(o.possibleStates, state.AsString())
+			}
+
+			s.ssensors[o.name] = o
+		} else if typeof == "float" {
+			o := &sensorStateAsFloat{}
+			o.name = e.Get("name").AsString()
+			o.typeof = typeof
+			o.unit = e.Get("unit").AsString()
+			o.update = true
+			o.defaultState = e.Get("default").AsFloat64()
+			o.min = e.Get("min").AsFloat64()
+			o.max = e.Get("max").AsFloat64()
+
+			s.fsensors[o.name] = o
+		}
 	}
 
 	return s, nil
 }
 
-func (s *Sensors) SetRain(rain int) {
-
-}
-func (s *Sensors) SetWind(rain int) {
-
-}
-func (s *Sensors) SetTemperature(rain int) {
-
-}
-func (s *Sensors) SetCalEvent(event string) {
-
-}
-
-func (s *Sensors) UpdateToHASS() {
+func (s *Sensors) Process(sstates *map[string]string, fstates [string]float64) {
 
 	// req, err := http.NewRequest("POST", HassURL+v.Sensor, bytes.NewBuffer(sensorJSON))
 	// req.Header.Set("Content-Type", "application/json")
