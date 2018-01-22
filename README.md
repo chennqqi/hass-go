@@ -11,23 +11,17 @@ This process will read data from:
   - Weather: When to send a weather report with a location (e.g. Asia/Shangai) and time-window.
   - Lights: Brightness and Temperature modifiers
 
-A computation is done for the supplied location (lat, long) to create a sensor that can have the following cycling states:
-- Night
-- Astronomical twilight
-- Nautical twilight
-- Civil twilight
-- Sunrise
-- Morning
-- Noon
-- Afternoon
-- Sunset
-- Civil twilight
-- Nautical twilight
-- Astronomical twilight
-- Night
+The Calendars will create the following HTTP sensors:
+- sensor.jennifer (school, free)
+- sensor.sophia (school, free)
+- sensor.parents (work, free)
 
-These states are send to home-assistant as a 'sensor.
+Others are:
+- sensor.time_of_day
 
+A computation is done for the supplied location (lat, long) using weather, sun position and season to create values for the following HTTP sensors:
+- sensor.color_temperature
+- sensor.brightness
 
 And it will do the following:
 - Post a json message to a running home-assistant instance http://IP:Port/api/states/sensor.NAME to update HTTP sensors
