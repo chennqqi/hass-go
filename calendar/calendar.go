@@ -3,16 +3,19 @@ package calendar
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/PuloV/ics-golang"
 	"github.com/jurgen-kluft/hass-go/dynamic"
+	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
 
 type Calendar struct {
-	viper  *viper.Viper
-	events map[string]string
+	viper   *viper.Viper
+	sevents map[string]string
+	fevents map[string]float64
 }
 
 func New() (*Calendar, error) {
@@ -31,8 +34,14 @@ func New() (*Calendar, error) {
 	events := dynamic.Dynamic{Item: c.viper.Get("event")}
 	for _, event := range events.ArrayIter() {
 		ename := event.Get("name").AsString()
-		estate := event.Get("state").AsString()
-		c.events[ename] = estate
+		etype := event.Get("name").AsString()
+		if etype == "string" {
+			estate := event.Get("state").AsString()
+			c.sevents[ename] = estate
+		} else if etype == "float" {
+			estate := event.Get("state").AsFloat64()
+			c.fevents[ename] = estate
+		}
 	}
 
 	return c, nil
@@ -68,8 +77,6 @@ func (c *Calendar) download() (events map[string]string, err error) {
 	}
 	parser.Wait()
 
-	// 10 X 13 + 6 = 11 * 12 + 4
-
 	// get all calendars from parser
 	cals, errCals := parser.GetCalendars()
 
@@ -92,7 +99,7 @@ func (c *Calendar) download() (events map[string]string, err error) {
 }
 
 // Process will update 'events' from the calendar
-func (c *Calendar) Process(events *map[string]string) error {
+func (c *Calendar) Process(state *state.Instance) error {
 	calendarEvents, err := c.download()
 	if err != nil {
 		return err
@@ -101,13 +108,21 @@ func (c *Calendar) Process(events *map[string]string) error {
 	// First set all states we are tracking to their default
 	// because not every event might occur in the calendar at
 	// this specific date/time.
-	for k, v := range c.events {
-		(*events)[k] = v
+	for k, v := range c.sevents {
+		state.Strings[k] = v
+	}
+	for k, v := range c.fevents {
+		state.Floats[k] = v
 	}
 
 	// Then update all the states from the calendar events
 	for k, v := range calendarEvents {
-		(*events)[k] = v
+		if state.HasStringState(k) {
+			state.Strings[k] = v
+		} else if state.HasFloatState(k) {
+			f, _ := strconv.ParseFloat(v, 64)
+			state.Floats[k] = f
+		}
 	}
 	return nil
 }

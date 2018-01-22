@@ -3,6 +3,7 @@ package dynamic
 import (
 	"fmt"
 	"reflect"
+	"time"
 )
 
 type Dynamic struct {
@@ -33,6 +34,23 @@ func (dyn Dynamic) AsString() string {
 		return dyn.Item.(string)
 	}
 	return ""
+}
+
+func (dyn Dynamic) IsDuration() bool {
+	if reflect.TypeOf(dyn.Item).Kind() == reflect.String {
+		_, e := time.ParseDuration(dyn.AsString())
+		return e == nil
+	}
+	return false
+}
+func (dyn Dynamic) AsDuration() time.Duration {
+	if dyn.IsString() {
+		d, e := time.ParseDuration(dyn.AsString())
+		if e == nil {
+			return d
+		}
+	}
+	return time.Duration(0)
 }
 func (dyn Dynamic) IsBool() bool {
 	return reflect.TypeOf(dyn.Item).Kind() == reflect.Bool

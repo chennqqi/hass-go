@@ -1,16 +1,15 @@
 package lights
 
-import "time"
+import (
+	"time"
+
+	"github.com/jurgen-kluft/hass-go/dynamic"
+	"github.com/jurgen-kluft/hass-go/state"
+	"github.com/spf13/viper"
+)
 
 // Color Temperature
 // URL: https://panasonic.net/es/solution-works/jiyugaoka/
-
-type lighttime struct {
-	kelvin      float64
-	brightness  float64
-	startMoment string
-	endMoment   string
-}
 
 var defaultTime time.Time
 
@@ -20,36 +19,14 @@ type addtime struct {
 	shift time.Duration
 }
 
-var additionaltimes = []addtime{
-	{"sunrise:end", ":+2h", 2 * time.Hour},
-	{"sun:noon:end", ":+2h", 2 * time.Hour},
-	{"astronomical:dusk:end", ":+1h", 1 * time.Hour},
-	{"astronomical:dusk:end", ":+2h", 2 * time.Hour},
-	{"astronomical:dusk:end", ":+3h", 3 * time.Hour},
+type lighttime struct {
+	kelvin      float64
+	brightness  float64
+	startMoment string
+	endMoment   string
 }
 
-var lighttable = []lighttime{
-	{0.0, 0.01, "night:darkest:end", "astronomical:dawn:begin"},
-	{0.03, 0.50, "astronomical:dawn:begin", "astronomical:dawn:end"},
-	{0.06, 0.60, "nautical:dawn:begin", "nautical:dawn:end"},
-	{0.11, 0.80, "civil:dawn:begin", "civil:dawn:end"},
-	{0.15, 0.90, "sunrise:begin", "sunrise:end:+2h"},
-	{0.6, 0.80, "sunrise:end:+2h", "sun:noon:begin"},
-	{0.7, 0.85, "sun:noon:begin", "sun:noon:end"},
-	{0.7, 0.85, "sun:noon:end", "sun:noon:end:+2h"},
-	{0.7, 0.85, "sun:noon:end:+2h", "sunset:begin"},
-	{0.22, 0.85, "sunset:begin", "sunset:end"},
-	{0.21, 0.80, "civil:dusk:begin", "civil:dusk:end"},
-	{0.2, 0.80, "nautical:dusk:begin", "nautical:dusk:end"},
-	{0.15, 0.80, "astronomical:dusk:begin", "astronomical:dusk:end"},
-	{0.13, 0.80, "astronomical:dusk:end", "astronomical:dusk:end:+1h"},
-	{0.08, 0.50, "astronomical:dusk:end:+1h", "astronomical:dusk:end:+2h"},
-	{0.04, 0.20, "astronomical:dusk:end:+2h", "astronomical:dusk:end:+3h"},
-	{0.0, 0.01, "astronomical:dusk:end:+3h", "night:darkest:begin"},
-	{0.0, 0.01, "night:darkest:begin", "night:darkest:end"},
-}
-
-type lightcfg struct {
+type lighttype struct {
 	name   string
 	minCT  float64
 	maxCT  float64
@@ -57,51 +34,101 @@ type lightcfg struct {
 	maxBRI float64
 }
 
-var lightcfgs = []lightcfg{
-	{"HUE", 2000, 6500, 0, 254},
-	{"Yee", 2000, 6500, 0, 254},
-}
-
-var seasonModifiers = map[string]float64{
-	"Winter": 0.8,
-	"Spring": 0.75,
-	"Summer": 0.70,
-	"Autumn": 0.75,
-}
-
 type weathermod struct {
-	weather float64 // Cloud factor
-	ct      float64
-	bri     float64
-}
-
-var weather = []weathermod{
-	{0.0, 0.9, 1.0},
-	{0.5, 0.92, 1.0},
-	{0.15, 0.97, 1.0},
-	{0.35, 1.04, 1.0},
-	{0.5, 1.12, 1.0},
-	{0.9, 1.2, 1.0},
+	clouds float64 // Cloud factor
+	ct     float64
+	bri    float64
 }
 
 type Lights struct {
+	viper      *viper.Viper
+	weather    []weathermod
+	addtimes   []addtime
+	lighttable []lighttime
+	lighttypes []lighttype
 }
 
-func get(k string, m map[string]string) string {
-	v, x := m[k]
-	if x {
-		return v
+func New(state *state.Instance) (*Lights, error) {
+	l := &Lights{}
+	l.viper = viper.New()
+
+	// Viper command-line package
+	l.viper.SetConfigName("hass-go-lighting")        // name of config file (without extension)
+	l.viper.AddConfigPath("$HOME/.hass-go-lighting") // call multiple times to add many search paths
+	l.viper.AddConfigPath(".")                       // optionally look for config in the working directory
+	err := l.viper.ReadInConfig()                    // Find and read the config file
+	if err != nil {                                  // Handle errors reading the config file
+		return nil, err
 	}
-	return ""
+
+	l.weather = []weathermod{}
+	dweather := dynamic.Dynamic{Item: viper.Get("weather")}
+	for _, dw := range dweather.ArrayIter() {
+		w := weathermod{}
+		w.clouds = dw.Get("clouds").AsFloat64()
+		w.bri = dw.Get("bri").AsFloat64()
+		w.ct = dw.Get("ct").AsFloat64()
+
+		l.weather = append(l.weather, w)
+	}
+
+	daddtimes := dynamic.Dynamic{Item: viper.Get("addtime")}
+	for _, dt := range daddtimes.ArrayIter() {
+		t := addtime{}
+		t.name = dt.Get("name").AsString()
+		t.shift = dt.Get("shift").AsDuration()
+		t.tag = dt.Get("tag").AsString()
+
+		l.addtimes = append(l.addtimes, t)
+	}
+
+	dlighttypes := dynamic.Dynamic{Item: viper.Get("lighttype")}
+	for _, dlt := range dlighttypes.ArrayIter() {
+		lt := lighttype{}
+		lt.name = dlt.Get("name").AsString()
+		lt.minCT = dlt.Get("minCT").AsFloat64()
+		lt.maxCT = dlt.Get("maxCT").AsFloat64()
+		lt.minBRI = dlt.Get("minBRI").AsFloat64()
+		lt.maxBRI = dlt.Get("maxBRI").AsFloat64()
+
+		l.lighttypes = append(l.lighttypes, lt)
+	}
+
+	dlighttimes := dynamic.Dynamic{Item: viper.Get("lighttime")}
+	for _, dlt := range dlighttimes.ArrayIter() {
+		//kelvin      = 0.0
+		//brightness  = 0.01
+		//startMoment = "night:darkest:end"
+		//endMoment   = "astronomical:dawn:begin"
+		lt := lighttime{}
+		lt.kelvin = dlt.Get("kelvin").AsFloat64()
+		lt.brightness = dlt.Get("brightness").AsFloat64()
+		lt.startMoment = dlt.Get("startMoment").AsString()
+		lt.endMoment = dlt.Get("endMoment").AsString()
+
+		l.lighttable = append(l.lighttable, lt)
+	}
+	return l, nil
 }
 
 // Process will update 'string'states and 'float'states
 // States are both input and output, for example as input
 // there are Season/Weather states like 'Season':'Winter'
 // and 'Clouds':0.5
-func (l *Lights) Process(sstates *map[string]string, fstates *map[string]float64, tstates *map[string]time.Time) {
+func (l *Lights) Process(state *state.Instance) {
+	now := time.Now()
 
-	season := get("Season", *sstates)
-	seasonModifier := seasonModifiers[season]
+	for _, at := range l.addtimes {
+		if state.HasTimeState(at.name) {
+			t := state.GetTimeState(at.name, now)
+			t = t.Add(at.shift)
+			state.SetTimeState(at.name+at.tag, t)
+		}
+	}
+
+	season := state.GetStringState("Season", "Winter")
+	seasonMod := viper.GetFloat64("Season." + season)
+
+	clouds := state.GetFloatState("Clouds", 0.5)
 
 }
