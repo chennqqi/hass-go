@@ -33,6 +33,8 @@ package main
 
 func main() {
 
+	// TODO: implement the main hass-go function
+
 	// Create:
 	// - Calendar
 	// - IM
