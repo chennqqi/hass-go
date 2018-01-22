@@ -5,6 +5,10 @@ package suncalc
 import (
 	"math"
 	"time"
+
+	"github.com/jurgen-kluft/hass-go/dynamic"
+	"github.com/jurgen-kluft/hass-go/state"
+	"github.com/spf13/viper"
 )
 
 // The angle is mirrored in the rising and setting moments of the day centered around noon
@@ -14,15 +18,6 @@ type anglecfg struct {
 	set   string
 }
 
-// The list of angles we are interested in as 'events'
-var anglecfgs = []anglecfg{
-	{-18.0, "astronomical:dawn", "night:dusk"},
-	{-12.0, "nautical:dawn", "astronomical:dusk"},
-	{-6.0, "civil:dawn", "nautical:dusk"},
-	{-0.833, "sunrise", "civil:dusk"},
-	{-0.3, "sunrise:end", "sunset"},
-}
-
 // A moment is a time period with a 'from' and 'to' marked with a 'title' and 'description'
 // 'title' is of the format 'primary:secondary:begin|end{:today|tomorrow}",
 type momentcfg struct {
@@ -30,23 +25,6 @@ type momentcfg struct {
 	descr string
 	begin string
 	end   string
-}
-
-var momentcfgs = []momentcfg{
-	{"night:dawn", "midnight to twilight, 2nd part of the night", "night:darkest:end:today", "astronomical:dawn"},
-	{"astronomical:dawn", "morning astronomical twilight", "astronomical:dawn", "nautical:dawn"},
-	{"nautical:dawn", "morning nautical twilight", "nautical:dawn", "civil:dawn"},
-	{"civil:dawn", "morning civil twilight", "civil:dawn", "sunrise"},
-	{"sunrise", "top edge of the sun appears on the horizon until it is fully visible", "sunrise", "sunrise:end"},
-	{"sun:morning", "sun has risen and moves towards noon", "sunrise:end", "sun:noon:begin"},
-	{"sun:noon", "sun is in the highest position", "sun:noon:begin", "sun:noon:end"},
-	{"sun:afternoon", "sun is past noon and moves towards sunset", "sun:noon:end", "sunset"},
-	{"sunset", "bottom edge of the sun touches the horizon until it dissapears under the horizon", "sunset", "civil:dusk"},
-	{"civil:dusk", "evening civil twilight", "civil:dusk", "nautical:dusk"},
-	{"nautical:dusk", "evening nautical twilight", "nautical:dusk", "astronomical:dusk"},
-	{"astronomical:dusk", "evening astronomical twilight", "astronomical:dusk", "night:dusk"},
-	{"night:dusk", "end of dusk, evening until midnight", "night:dusk", "night:darkest:begin"},
-	{"night:darkest", "midnight, darkest moment of the night", "night:darkest:begin", "night:darkest:end:tomorrow"},
 }
 
 const (
@@ -192,7 +170,7 @@ type Cmoment struct {
 }
 
 // GetMoments returns the current day of Cmoment items (see comment on Cmoment)
-func GetMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
+func (s *Instance) getMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
 	lw := rad * -lng
 	phi := rad * lat
 
@@ -214,7 +192,7 @@ func GetMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
 	noon := fromJulian(Jnoon)
 	mtimes["sun:noon:begin"] = hoursLater(noon, -0.15)
 	mtimes["sun:noon:end"] = hoursLater(noon, +0.15)
-	for _, a := range anglecfgs {
+	for _, a := range s.angles {
 		Jset := getSetJ(a.angle*rad, lw, phi, dec, n, M, L)
 		Jrise := Jnoon - (Jset - Jnoon)
 		mtimes[a.rise] = fromJulian(Jrise)
@@ -229,7 +207,7 @@ func GetMoments(date time.Time, lat float64, lng float64) (result []Cmoment) {
 	// }
 
 	moments := []Cmoment{}
-	for _, m := range momentcfgs {
+	for _, m := range s.moments {
 		t0 := mtimes[m.begin]
 		t1 := mtimes[m.end]
 
@@ -420,4 +398,64 @@ func getMoonTimes(date time.Time, lat float64, lng float64, inUTC bool) (moonris
 		}
 	}
 	return
+}
+
+type Instance struct {
+	viper     *viper.Viper
+	angles    []anglecfg
+	moments   []momentcfg
+	latitude  float64
+	longitude float64
+}
+
+func New() (*Instance, error) {
+	s := &Instance{}
+
+	s.viper = viper.New()
+	s.moments = []momentcfg{}
+
+	// Viper command-line package
+	s.viper.SetConfigName("hass-go-suncalc")        // name of config file (without extension)
+	s.viper.AddConfigPath("$HOME/.hass-go-suncalc") // call multiple times to add many search paths
+	s.viper.AddConfigPath(".")                      // optionally look for config in the working directory
+	err := s.viper.ReadInConfig()                   // Find and read the config file
+	if err != nil {                                 // Handle errors reading the config file
+		return nil, err
+	}
+
+	s.latitude = viper.GetFloat64("config.latitude")
+	s.longitude = viper.GetFloat64("config.longitude")
+
+	angles := dynamic.Dynamic{Item: viper.Get("angle")}
+	for _, a := range angles.ArrayIter() {
+		angle := anglecfg{}
+		angle.angle = a.Get("angle").AsFloat64()
+		angle.rise = a.Get("rise").AsString()
+		angle.set = a.Get("set").AsString()
+	}
+
+	moments := dynamic.Dynamic{Item: viper.Get("moment")}
+	for _, m := range moments.ArrayIter() {
+		moment := momentcfg{}
+		moment.title = m.Get("title").AsString()
+		moment.descr = m.Get("descr").AsString()
+		moment.begin = m.Get("begin").AsString()
+		moment.end = m.Get("end").AsString()
+	}
+
+	return s, nil
+}
+
+func (s *Instance) Process(state state.Instance) {
+	lat := state.GetFloatState("Latitude", s.latitude)
+	lng := state.GetFloatState("Longitude", s.longitude)
+	moments := s.getMoments(time.Now(), lat, lng)
+	for _, m := range moments {
+		//	title string
+		//	descr string
+		//	start time.Time
+		//	end   time.Time
+		state.SetTimeState(m.title+":begin", m.start)
+		state.SetTimeState(m.title+":end", m.end)
+	}
 }

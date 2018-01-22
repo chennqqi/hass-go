@@ -7,28 +7,25 @@ package main
 // In icloud we have the following calendars already:
 // - TimeOfDay
 // - Season
-// - Weather to report
-// - Lights (NA)
+// - Weather
+// - Lighting (NA)
 // Note: These calendars can be downloaded on a low frequency.
-// - Weather (The moments when to report the weather)
+// - Weather
 // - TimeOfDay (Breakfast, Morning, Lunch, Afternoon, Evening, ..)
 // - Season (Summer, Winter, Spring, Autumn)
-// - Lights: Temperature (min(154) - max(500)) and Brightness (0.0 - 1.0)
+// - Lighting: Color-Temperature and Brightness
 
 // Every X minutes:
-// - Download calendars from icloud URL
-// - Parse all calendars
-// - For 'Today' and 'Tomorrow' get all events
-// - Search events for:
-//   - "Jennifer.School" & "Jennifer.Free"
-//   - "Sophia.School" & "Sophia.Free"
-//   - "Parents.Work" & "Parents.Free"
-//   - "Alarm.Event"
-// - From the events build the info for all the sensors
-// - Today school time is from 6:00 AM to 17:00 AM
-//   So if we have school tomorrow then the sensor will still be set
-//   to School otherwise it would be Free
-// - Push the sensor state of Jennifer, Sophia, Parents and Alarm to HASS
+// - Update Calendar
+// - Update SunCalc
+// - Update DarkOrLight
+// - Update Weather
+// - Update Lighting
+// - Update Sensors (this will HTTP to Home-Assistant)
+// - Update Notifications and Reports
+//   - Weather warnings
+//   - Weather reports
+//   - Alarms
 // - Sleep
 
 func main() {
@@ -38,9 +35,10 @@ func main() {
 	// Create:
 	// - Calendar
 	// - IM
+	// - SunCalc
 	// - Weather
 	// - Sensors
-	// - Lights
+	// - Lighting
 
 	// All states are tracked and updated using maps, we have 3 of them:
 	// - sstates *map[string]string

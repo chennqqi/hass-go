@@ -8,3 +8,5 @@ pyAesCrypt.encryptFile("hass-go-sensors.TOML",  "hass-go-sensors.TOML.aes", pass
 pyAesCrypt.encryptFile("hass-go-slack.TOML",    "hass-go-slack.TOML.aes", password, bufferSize)
 pyAesCrypt.encryptFile("hass-go-weather.TOML",  "hass-go-weather.TOML.aes", password, bufferSize)
 pyAesCrypt.encryptFile("hass-go-secrets.TOML",  "hass-go-secrets.TOML.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-suncalc.TOML",  "hass-go-suncalc.TOML.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-lighting.TOML",  "hass-go-lighting.TOML.aes", password, bufferSize)

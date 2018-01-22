@@ -4,6 +4,7 @@ import (
 	//"net/http"
 	//"net/url"
 	"github.com/jurgen-kluft/hass-go/dynamic"
+	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
 
@@ -30,6 +31,8 @@ type Sensors struct {
 	viper    *viper.Viper
 	ssensors map[string]*sensorStateAsString
 	fsensors map[string]*sensorStateAsFloat
+	sstate   map[string]string
+	fstate   map[string]float64
 }
 
 // New will return a new instance of 'Sensors'
@@ -82,7 +85,48 @@ func New() (*Sensors, error) {
 	return s, nil
 }
 
-func (s *Sensors) Process(sstates *map[string]string, fstates [string]float64) {
+func (s *Sensors) getStateString(sensorName string) string {
+	state, exists := s.sstate[sensorName]
+	if !exists {
+		var sensor *sensorStateAsString
+		sensor, _ = s.ssensors[sensorName]
+		s.sstate[sensorName] = sensor.defaultState
+		state = sensor.defaultState
+	}
+	return state
+}
+func (s *Sensors) setStateString(sensorName string, sensorState string) {
+	s.sstate[sensorName] = sensorState
+}
+
+func (s *Sensors) getStateFloat(sensorName string) float64 {
+	state, exists := s.fstate[sensorName]
+	if !exists {
+		var sensor *sensorStateAsFloat
+		sensor, _ = s.fsensors[sensorName]
+		s.fstate[sensorName] = sensor.min
+		state = sensor.min
+	}
+	return state
+}
+func (s *Sensors) setStateFloat(sensorName string, sensorState float64) {
+	s.fstate[sensorName] = sensorState
+}
+
+func (s *Sensors) Process(state *state.Instance) {
+	for sname := range s.ssensors {
+		if state.HasStringState(sname) {
+			s.setStateString(sname, state.Strings[sname])
+		}
+	}
+
+	for sname := range s.fsensors {
+		if state.HasFloatState(sname) {
+			s.setStateFloat(sname, state.Floats[sname])
+		}
+	}
+
+	// @TODO: Send sensors to home-assistant
 
 	// req, err := http.NewRequest("POST", HassURL+v.Sensor, bytes.NewBuffer(sensorJSON))
 	// req.Header.Set("Content-Type", "application/json")
