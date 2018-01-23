@@ -3,10 +3,10 @@ import pyAesCrypt
 bufferSize = 64 * 1024
 password = input("Enter password: ")
 # decrypt
-pyAesCrypt.encryptFile("hass-go-calendar.TOML", "hass-go-calendar.TOML.aes", password, bufferSize)
-pyAesCrypt.encryptFile("hass-go-sensors.TOML",  "hass-go-sensors.TOML.aes", password, bufferSize)
-pyAesCrypt.encryptFile("hass-go-slack.TOML",    "hass-go-slack.TOML.aes", password, bufferSize)
-pyAesCrypt.encryptFile("hass-go-weather.TOML",  "hass-go-weather.TOML.aes", password, bufferSize)
-pyAesCrypt.encryptFile("hass-go-secrets.TOML",  "hass-go-secrets.TOML.aes", password, bufferSize)
-pyAesCrypt.encryptFile("hass-go-suncalc.TOML",  "hass-go-suncalc.TOML.aes", password, bufferSize)
-pyAesCrypt.encryptFile("hass-go-lighting.TOML",  "hass-go-lighting.TOML.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-calendar.toml", "hass-go-calendar.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-sensors.toml",  "hass-go-sensors.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-slack.toml",    "hass-go-slack.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-weather.toml",  "hass-go-weather.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-secrets.toml",  "hass-go-secrets.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-suncalc.toml",  "hass-go-suncalc.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("hass-go-lighting.toml",  "hass-go-lighting.toml.aes", password, bufferSize)

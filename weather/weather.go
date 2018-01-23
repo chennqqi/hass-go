@@ -6,7 +6,7 @@ import (
 
 	"github.com/adlio/darksky"
 	"github.com/jurgen-kluft/hass-go/dynamic"
-	"github.com/jurgen-kluft/hass-go/im"
+	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
 
@@ -36,6 +36,7 @@ func New() (*Client, error) {
 
 	c.location, _ = time.LoadLocation(c.viper.GetString("location.timezone"))
 	c.darksky = darksky.NewClient(c.viper.GetString("darksky.key"))
+	c.darkargs = map[string]string{}
 	c.darkargs["units"] = "si"
 
 	return c, nil
@@ -54,11 +55,16 @@ func (c *Client) DetermineRain(d darksky.DataPoint) {
 	}
 }
 
-func (c *Client) CreateReport(d darksky.DataPoint) {
+func (c *Client) CreateReport(from time.Time, until time.Time, d darksky.DataPoint) {
+
+	// Get hourly report, cut off the head of anything that is before 'from'
+	// Trim the tail of anything that is beyond 'until'
 
 	// Report is like this:
-	//   sunrise   (6-8): Fog, Soft breeze, 10 Celcius (Cool)
-	//   morning   (8-10): Light Drizzle, Soft breeze, 13 Celcius (Cool)
+	//   today            : Rain = 50%, Temperature = min - max
+	//   air quality      : 50-100, Moderate
+	//   sunrise   ( 6- 8): Fog, Soft breeze, 10 Celcius (Cool)
+	//   morning   ( 8-10): Light Drizzle, Soft breeze, 8 to 13 Celcius (Cool)
 	//   morning   (10-12):
 	//   noon      (12-14):
 	//   afternoon (14-16):
@@ -68,17 +74,17 @@ func (c *Client) CreateReport(d darksky.DataPoint) {
 
 }
 
-func (c *Client) Process(im *im.IM) {
-	forecast, err := c.darksky.GetForecast(c.viper.GetString("location.latitude"), c.viper.GetString("location.longitude"), c.darkargs)
-	if err == nil {
-		username := "The Weather"
-		msg := forecast.Currently.Summary
-		pretext := "Details"
-		prebody := fmt.Sprintf("Rain: %d%%\n", int(forecast.Currently.PrecipProbability))
-		prebody += fmt.Sprintf("Clouds: %d%%\n", int(forecast.Currently.CloudCover*100.0))
-		prebody += fmt.Sprintf("Temperature: %d C\n", int(converFToC(forecast.Currently.Temperature+0.5)))
+func (c *Client) Process(state *state.Instance) {
+	// forecast, err := c.darksky.GetForecast(c.viper.GetString("location.latitude"), c.viper.GetString("location.longitude"), c.darkargs)
+	// if err == nil {
+	// username := "The Weather"
+	// msg := forecast.Currently.Summary
+	// pretext := "Details"
+	// prebody := fmt.Sprintf("Rain: %d%%\n", int(forecast.Currently.PrecipProbability))
+	// prebody += fmt.Sprintf("Clouds: %d%%\n", int(forecast.Currently.CloudCover*100.0))
+	// prebody += fmt.Sprintf("Temperature: %d C\n", int(converFToC(forecast.Currently.Temperature+0.5)))
 
-		im.PostMessage(c.viper.GetString("slack.channel"), username, msg, pretext, prebody)
-	}
+	//im.PostMessage(c.viper.GetString("slack.channel"), username, msg, pretext, prebody)
+	//}
 
 }

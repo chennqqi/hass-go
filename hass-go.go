@@ -1,5 +1,16 @@
 package main
 
+import (
+	"time"
+
+	"github.com/jurgen-kluft/hass-go/calendar"
+	"github.com/jurgen-kluft/hass-go/lighting"
+	"github.com/jurgen-kluft/hass-go/sensors"
+	"github.com/jurgen-kluft/hass-go/state"
+	"github.com/jurgen-kluft/hass-go/suncalc"
+	"github.com/jurgen-kluft/hass-go/weather"
+)
+
 // This can be computed from sun-rise, sun-set
 // - sensor.dark_or_light (Dark, Twilight, Light)
 
@@ -31,18 +42,23 @@ package main
 func main() {
 
 	// TODO: implement the main hass-go function
+	time.LoadLocation("Asia/Shanghai")
 
 	// Create:
-	// - Calendar
-	// - IM
-	// - SunCalc
-	// - Weather
-	// - Sensors
-	// - Lighting
+	state := state.New()
+	calendar, _ := calendar.New()
+	// im,  := im.New()
+	weather, _ := weather.New()
+	suncalc, _ := suncalc.New()
+	sensors, _ := sensors.New()
+	lighting, _ := lighting.New(state)
 
-	// All states are tracked and updated using maps, we have 3 of them:
-	// - sstates *map[string]string
-	// - fstates *map[string]float64
-	// - tstates *map[string]time.Time
+	// Process
+	calendar.Process(state)
+	suncalc.Process(state)
+	weather.Process(state)
+	lighting.Process(state)
+	sensors.Process(state)
 
+	state.Print()
 }

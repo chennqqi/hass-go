@@ -1,6 +1,9 @@
 package state
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Instance holds all state of our components in multiple 'map's
 type Instance struct {
@@ -79,4 +82,16 @@ func (s *Instance) SetTimeState(name string, state time.Time) (time.Time, bool) 
 		t = state
 	}
 	return t, exists
+}
+
+func (s *Instance) Print() {
+	for k, v := range s.Floats {
+		fmt.Printf("%s : %f\n", k, v)
+	}
+	for k, v := range s.Strings {
+		fmt.Printf("%s : %s\n", k, v)
+	}
+	for k, v := range s.Times {
+		fmt.Printf("%s : %v\n", k, v)
+	}
 }

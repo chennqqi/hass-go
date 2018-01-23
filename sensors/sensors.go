@@ -41,6 +41,8 @@ func New() (*Sensors, error) {
 	s.viper = viper.New()
 	s.ssensors = map[string]*sensorStateAsString{}
 	s.fsensors = map[string]*sensorStateAsFloat{}
+	s.sstate = map[string]string{}
+	s.fstate = map[string]float64{}
 
 	// Viper command-line package
 	s.viper.SetConfigName("hass-go-sensors")        // name of config file (without extension)
@@ -62,7 +64,7 @@ func New() (*Sensors, error) {
 			o.update = true
 			o.possibleStates = []string{}
 			o.defaultState = e.Get("default").AsString()
-			possibleStates := dynamic.Dynamic{Item: e.Get("states")}
+			possibleStates := e.Get("states")
 			for _, state := range possibleStates.ArrayIter() {
 				o.possibleStates = append(o.possibleStates, state.AsString())
 			}

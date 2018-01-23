@@ -20,6 +20,8 @@ type Calendar struct {
 
 func New() (*Calendar, error) {
 	c := &Calendar{}
+	c.sevents = map[string]string{}
+	c.fevents = map[string]float64{}
 
 	c.viper = viper.New()
 
@@ -34,7 +36,7 @@ func New() (*Calendar, error) {
 	events := dynamic.Dynamic{Item: c.viper.Get("event")}
 	for _, event := range events.ArrayIter() {
 		ename := event.Get("name").AsString()
-		etype := event.Get("name").AsString()
+		etype := event.Get("typeof").AsString()
 		if etype == "string" {
 			estate := event.Get("state").AsString()
 			c.sevents[ename] = estate
@@ -100,11 +102,6 @@ func (c *Calendar) download() (events map[string]string, err error) {
 
 // Process will update 'events' from the calendar
 func (c *Calendar) Process(state *state.Instance) error {
-	calendarEvents, err := c.download()
-	if err != nil {
-		return err
-	}
-
 	// First set all states we are tracking to their default
 	// because not every event might occur in the calendar at
 	// this specific date/time.
@@ -113,6 +110,12 @@ func (c *Calendar) Process(state *state.Instance) error {
 	}
 	for k, v := range c.fevents {
 		state.Floats[k] = v
+	}
+
+	// Download calendar
+	calendarEvents, err := c.download()
+	if err != nil {
+		return err
 	}
 
 	// Then update all the states from the calendar events
