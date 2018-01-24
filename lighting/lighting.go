@@ -21,8 +21,8 @@ type addtime struct {
 }
 
 type lighttime struct {
-	ct          float64
-	bri         float64
+	ct          [2]float64
+	bri         [2]float64
 	darkorlight string
 	startMoment string
 	endMoment   string
@@ -53,9 +53,9 @@ type seasonmod struct {
 }
 
 type weathermod struct {
-	clouds float64 // Cloud factor
-	ct     float64
-	bri    float64
+	clouds  float64 // Cloud factor
+	ct_pct  float64 // Percentage change +/-
+	bri_pct float64 // Percentage change +/-
 }
 
 type Instance struct {
@@ -70,6 +70,7 @@ type Instance struct {
 func New(state *state.Instance) (*Instance, error) {
 	l := &Instance{}
 	l.viper = viper.New()
+	l.season = map[string]seasonmod{}
 	l.weather = []weathermod{}
 	l.addtimes = []addtime{}
 	l.lighttable = []lighttime{}
@@ -83,12 +84,6 @@ func New(state *state.Instance) (*Instance, error) {
 	if err != nil {                                  // Handle errors reading the config file
 		return nil, err
 	}
-
-	dseason := dynamic.Dynamic{Item: l.viper.Get("season")}
-	state.SetFloatState("Season.Winter", dseason.Get("winter").AsFloat64())
-	state.SetFloatState("Season.Spring", dseason.Get("spring").AsFloat64())
-	state.SetFloatState("Season.Summer", dseason.Get("summer").AsFloat64())
-	state.SetFloatState("Season.Autumn", dseason.Get("autumn").AsFloat64())
 
 	dseasonmod := dynamic.Dynamic{Item: l.viper.Get("season")}
 	for _, ds := range dseasonmod.ArrayIter() {
@@ -107,14 +102,14 @@ func New(state *state.Instance) (*Instance, error) {
 	for _, dw := range dweather.ArrayIter() {
 		w := weathermod{}
 		w.clouds = dw.Get("clouds").AsFloat64()
-		w.bri = dw.Get("bri").AsFloat64()
-		w.ct = dw.Get("ct").AsFloat64()
+		w.bri_pct = dw.Get("bri_pct").AsFloat64()
+		w.ct_pct = dw.Get("ct_pct").AsFloat64()
 
 		l.weather = append(l.weather, w)
 	}
 
-	daddtimes := dynamic.Dynamic{Item: l.viper.Get("addtime")}
-	for _, dt := range daddtimes.ArrayIter() {
+	dextratimes := dynamic.Dynamic{Item: l.viper.Get("extra_suncalc_time")}
+	for _, dt := range dextratimes.ArrayIter() {
 		t := addtime{}
 		t.name = dt.Get("name").AsString()
 		t.shift = dt.Get("shift").AsDuration()
@@ -142,8 +137,14 @@ func New(state *state.Instance) (*Instance, error) {
 		//startMoment = "night:darkest:end"
 		//endMoment   = "astronomical:dawn:begin"
 		lt := lighttime{}
-		lt.ct = dlt.Get("ct").AsFloat64()
-		lt.bri = dlt.Get("bri").AsFloat64()
+		dcta := dlt.Get("ct")
+		for i, v := range dcta.ArrayIter() {
+			lt.ct[i] = v.AsFloat64()
+		}
+		cbria := dlt.Get("bri")
+		for i, v := range cbria.ArrayIter() {
+			lt.bri[i] = v.AsFloat64()
+		}
 		lt.darkorlight = dlt.Get("darkorlight").AsString()
 		lt.startMoment = dlt.Get("startMoment").AsString()
 		lt.endMoment = dlt.Get("endMoment").AsString()
@@ -153,8 +154,20 @@ func New(state *state.Instance) (*Instance, error) {
 	return l, nil
 }
 
-func inTimeSpan(start, end, check time.Time) bool {
-	return check.After(start) && check.Before(end)
+func inTimeSpan(start, end, t time.Time) bool {
+	return t.After(start) && t.Before(end)
+}
+
+// Return the factor 0.0 - 1.0 that indicates where we are in between start - end
+func computeTimeSpanX(start, end, t time.Time) float64 {
+	sh, sm, sc := start.Clock()
+	sx := float64(sh*60*60) + float64(sm*60) + float64(sc)
+	eh, em, ec := end.Clock()
+	ex := float64(eh*60*60) + float64(em*60) + float64(ec)
+	th, tm, tc := t.Clock()
+	tx := float64(th*60*60) + float64(tm*60) + float64(tc)
+	x := (tx - sx) / (ex - sx)
+	return x
 }
 
 // Process will update 'string'states and 'float'states
@@ -173,38 +186,59 @@ func (l *Instance) Process(state *state.Instance) {
 		}
 	}
 	current := lighttime{}
+	currentx := 0.0 // Time interpolation factor, where are we between startMoment - endMoment
 	for _, lt := range l.lighttable {
 		t0 := state.GetTimeState(lt.startMoment, now)
 		t1 := state.GetTimeState(lt.endMoment, now)
 		if inTimeSpan(t0, t1, now) {
 			current = lt
-			fmt.Printf("Current lighttime: %s -> %s\n\n", current.startMoment, current.endMoment)
+			currentx = computeTimeSpanX(t0, t1, now)
+			fmt.Printf("Current lighttime: %s -> %s (x: %f)\n\n", current.startMoment, current.endMoment, currentx)
 			break
 		}
 	}
 
-	season := state.GetStringState("Season", "Winter")
-	seasonFac := state.GetFloatState("Season."+season, 0.0)
+	seasonName := state.GetStringState("Season", "Winter")
+	season := l.season[seasonName]
+	clouds := weathermod{clouds: 0.0, ct_pct: 0.0, bri_pct: 0.0}
 	cloudFac := state.GetFloatState("Clouds", 0.0)
+	for _, w := range l.weather {
+		if cloudFac <= w.clouds {
+			clouds = w
+			break
+		}
+	}
 
 	// Full cloud cover will increase color-temperature by 10% of (Max - Current)
 	// NOTE: Only during the day (twilight + light)
 	// TODO: when the moon is shining in the night the amount
 	//       of blue-light is also higher than normal.
-	// CT = 0 -> Coldest (>6500K)
-	// CT = 1 -> Warmest (2000K)
-	CT := (current.ct * seasonFac)
+	// CT = 0.0 -> Coldest (>6500K)
+	// CT = 1.0 -> Warmest (2000K)
+	CT := current.ct[0] + currentx*(current.ct[1]-current.ct[0])
 	if current.darkorlight != "dark" {
-		// A bit colder color temperature when there are clouds during the day.
-		CT = CT - cloudFac*0.1*CT
+		if clouds.ct_pct >= 0 {
+			CT = CT + clouds.ct_pct*(1.0-CT)
+		} else {
+			CT = CT - clouds.ct_pct*CT
+		}
 	}
+	CT = season.minCT + (CT * (season.maxCT - season.minCT))
 
 	// Full cloud cover will increase brightness by 10% of (Max - Current)
 	// BRI = 0 -> Very dim light
 	// BRI = 1 -> Very bright light
-	BRI := (current.bri * seasonFac)
+	BRI := current.bri[0] + currentx*(current.bri[1]-current.bri[0])
 	BRI = BRI + cloudFac*0.1*(1.0-BRI)
-	state.SetFloatState("lights_BRI", BRI)
+	if current.darkorlight != "dark" {
+		// A bit brighter lights when there are clouds during the day.
+		if clouds.ct_pct >= 0 {
+			BRI = BRI + clouds.bri_pct*(1.0-BRI)
+		} else {
+			BRI = BRI - clouds.bri_pct*BRI
+		}
+	}
+	BRI = season.minBRI + (BRI * (season.maxBRI - season.minBRI))
 
 	// Update the state of the following string states
 	// - lights_HUE_CT
@@ -214,12 +248,13 @@ func (l *Instance) Process(state *state.Instance) {
 	for _, ltype := range l.lighttypes {
 		lct := ltype.minCT + CT*(ltype.maxCT-ltype.minCT)
 		state.SetFloatState("lights_"+ltype.name+"_CT", lct)
+
 		lbri := ltype.minBRI + BRI*(ltype.maxBRI-ltype.minBRI)
 		state.SetFloatState("lights_"+ltype.name+"_BRI", lbri)
 	}
 
-	// DOL = dark or light
-	// States: 'dark', 'twilight', 'light'
+	state.SetFloatState("lights_CT", CT)
+	state.SetFloatState("lights_BRI", BRI)
 	state.SetStringState("lights_DOL", current.darkorlight)
 
 }

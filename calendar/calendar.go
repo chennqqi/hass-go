@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PuloV/ics-golang"
@@ -49,7 +50,7 @@ func New() (*Calendar, error) {
 	return c, nil
 }
 
-func updateEvents(calendars []*ics.Calendar, events map[string]string) error {
+func updateEvents(calendars []*ics.Calendar, state *state.Instance) error {
 	when := time.Now()
 	for _, cal := range calendars {
 		// get events for time 'when'
@@ -60,44 +61,57 @@ func updateEvents(calendars []*ics.Calendar, events map[string]string) error {
 
 		for _, e := range eventsForDay {
 			title := e.GetSummary()
-			var name, state string
-			n, e := fmt.Sscanf(title, "%s.%s", &name, &state)
-			if n == 2 && e == nil {
-				events[name] = state
+			//fmt.Printf("Calendar title: '%s'\n", title)
+			e := strings.Split(title, ".")
+			if len(e) == 2 {
+				//fmt.Printf("Calendar event: %s-%s\n", e[0], e[1])
+				if state.HasStringState(e[0]) {
+					state.SetStringState(e[0], e[1])
+				} else if state.HasFloatState(e[0]) {
+					f, _ := strconv.ParseFloat(e[1], 64)
+					state.SetFloatState(e[0], f)
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func (c *Calendar) download() (events map[string]string, err error) {
+func (c *Calendar) download(state *state.Instance) (err error) {
 	parser := ics.New()
+	ics.DeleteTempFiles = false
 	input := parser.GetInputChan()
-	dcals := dynamic.Dynamic{Item: c.viper.Get("calendar")}
+	dcals := dynamic.Dynamic{Item: c.viper.Get("calendars")}
 	for _, c := range dcals.ArrayIter() {
-		input <- c.Get("url").AsString()
+		calurl := c.Get("url").AsString()
+		input <- string(calurl)
 	}
+	//input <- "tmp/test.ics"
 	parser.Wait()
+	cerrors, err := parser.GetErrors()
+	if err == nil {
+		for _, err := range cerrors {
+			fmt.Printf("Calendar - ERROR: %s\n", err.Error())
+		}
+	}
 
 	// get all calendars from parser
 	cals, errCals := parser.GetCalendars()
 
-	events = map[string]string{}
-
 	// if error or no calendars, error
 	if errCals != nil {
-		return events, errCals
+		return errCals
 	} else if len(cals) == 0 {
-		return events, errors.New("No calendars (need one)")
+		return errors.New("No calendars (need one)")
 	}
 
 	// get events for time 'when' (using first calendar)
-	errEvents := updateEvents(cals, events)
+	errEvents := updateEvents(cals, state)
 	if errEvents != nil { // error -> error
-		return events, errEvents
+		return errEvents
 	}
 
-	return events, nil
+	return nil
 }
 
 // Process will update 'events' from the calendar
@@ -106,26 +120,17 @@ func (c *Calendar) Process(state *state.Instance) error {
 	// because not every event might occur in the calendar at
 	// this specific date/time.
 	for k, v := range c.sevents {
-		state.Strings[k] = v
+		state.SetStringState(k, v)
 	}
 	for k, v := range c.fevents {
-		state.Floats[k] = v
+		state.SetFloatState(k, v)
 	}
 
 	// Download calendar
-	calendarEvents, err := c.download()
+	err := c.download(state)
 	if err != nil {
 		return err
 	}
 
-	// Then update all the states from the calendar events
-	for k, v := range calendarEvents {
-		if state.HasStringState(k) {
-			state.Strings[k] = v
-		} else if state.HasFloatState(k) {
-			f, _ := strconv.ParseFloat(v, 64)
-			state.Floats[k] = f
-		}
-	}
 	return nil
 }

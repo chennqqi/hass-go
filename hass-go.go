@@ -54,7 +54,10 @@ func main() {
 	lighting, _ := lighting.New(state)
 
 	// Process
-	calendar.Process(state)
+	calerr := calendar.Process(state)
+	if calerr != nil {
+		panic(calerr)
+	}
 	suncalc.Process(state)
 	weather.Process(state)
 	lighting.Process(state)

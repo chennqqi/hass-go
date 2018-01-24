@@ -75,16 +75,19 @@ func (c *Client) CreateReport(from time.Time, until time.Time, d darksky.DataPoi
 }
 
 func (c *Client) Process(state *state.Instance) {
-	// forecast, err := c.darksky.GetForecast(c.viper.GetString("location.latitude"), c.viper.GetString("location.longitude"), c.darkargs)
-	// if err == nil {
-	// username := "The Weather"
-	// msg := forecast.Currently.Summary
-	// pretext := "Details"
-	// prebody := fmt.Sprintf("Rain: %d%%\n", int(forecast.Currently.PrecipProbability))
-	// prebody += fmt.Sprintf("Clouds: %d%%\n", int(forecast.Currently.CloudCover*100.0))
-	// prebody += fmt.Sprintf("Temperature: %d C\n", int(converFToC(forecast.Currently.Temperature+0.5)))
+	loc := dynamic.Dynamic{Item: c.viper.Get("location")}
+	forecast, err := c.darksky.GetForecast(loc.Get("latitude").AsString(), loc.Get("longitude").AsString(), c.darkargs)
+	if err == nil {
+		// username := "The Weather"
+		// msg := forecast.Currently.Summary
+		// pretext := "Details"
+		// prebody := fmt.Sprintf("Rain: %d%%\n", int(forecast.Currently.PrecipProbability))
+		// prebody += fmt.Sprintf("Clouds: %d%%\n", int(forecast.Currently.CloudCover*100.0))
+		// prebody += fmt.Sprintf("Temperature: %d C\n", int(converFToC(forecast.Currently.Temperature+0.5)))
 
-	//im.PostMessage(c.viper.GetString("slack.channel"), username, msg, pretext, prebody)
-	//}
+		state.SetFloatState("Clouds", forecast.Currently.CloudCover)
+
+		//im.PostMessage(c.viper.GetString("slack.channel"), username, msg, pretext, prebody)
+	}
 
 }

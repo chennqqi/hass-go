@@ -32,6 +32,12 @@ func (dyn Dynamic) IsString() bool {
 func (dyn Dynamic) AsString() string {
 	if dyn.IsString() {
 		return dyn.Item.(string)
+	} else if dyn.IsInt32() {
+		return fmt.Sprintf("%d", dyn.AsInt32())
+	} else if dyn.IsInt64() {
+		return fmt.Sprintf("%d", dyn.AsInt64())
+	} else if dyn.IsFloat64() {
+		return fmt.Sprintf("%f", dyn.AsFloat64())
 	}
 	return ""
 }
