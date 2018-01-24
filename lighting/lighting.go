@@ -44,6 +44,14 @@ type lighttype struct {
 	maxBRI float64
 }
 
+type seasonmod struct {
+	name   string
+	minCT  float64
+	maxCT  float64
+	minBRI float64
+	maxBRI float64
+}
+
 type weathermod struct {
 	clouds float64 // Cloud factor
 	ct     float64
@@ -52,6 +60,7 @@ type weathermod struct {
 
 type Instance struct {
 	viper      *viper.Viper
+	season     map[string]seasonmod
 	weather    []weathermod
 	addtimes   []addtime
 	lighttable []lighttime
@@ -80,6 +89,18 @@ func New(state *state.Instance) (*Instance, error) {
 	state.SetFloatState("Season.Spring", dseason.Get("spring").AsFloat64())
 	state.SetFloatState("Season.Summer", dseason.Get("summer").AsFloat64())
 	state.SetFloatState("Season.Autumn", dseason.Get("autumn").AsFloat64())
+
+	dseasonmod := dynamic.Dynamic{Item: l.viper.Get("season")}
+	for _, ds := range dseasonmod.ArrayIter() {
+		sm := seasonmod{}
+		sm.name = ds.Get("name").AsString()
+		sm.minCT = ds.Get("minCT").AsFloat64()
+		sm.maxCT = ds.Get("maxCT").AsFloat64()
+		sm.minBRI = ds.Get("minBRI").AsFloat64()
+		sm.maxBRI = ds.Get("maxBRI").AsFloat64()
+
+		l.season[sm.name] = sm
+	}
 
 	l.weather = []weathermod{}
 	dweather := dynamic.Dynamic{Item: l.viper.Get("weather")}
