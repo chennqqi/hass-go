@@ -45,7 +45,7 @@ func New() (*Client, error) {
 func (c *Client) DetermineRain(d darksky.DataPoint) {
 
 	pi := d.PrecipIntensity
-	rain := dynamic.Dynamic{c.viper.Get("rain")}
+	rain := dynamic.Dynamic{Item: c.viper.Get("rain")}
 	for _, e := range rain.ArrayIter() {
 		min := e.Get("intensity_min").AsFloat64()
 		max := e.Get("intensity_max").AsFloat64()

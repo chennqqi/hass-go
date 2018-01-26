@@ -1,10 +1,9 @@
 package sensors
 
 import (
-	//"net/http"
-	//"net/url"
+	"strconv"
+
 	"github.com/jurgen-kluft/hass-go/dynamic"
-	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
 
@@ -28,11 +27,12 @@ type sensorStateAsFloat struct {
 
 // Sensors is an instance to track sensor state
 type Sensors struct {
-	viper    *viper.Viper
-	ssensors map[string]*sensorStateAsString
-	fsensors map[string]*sensorStateAsFloat
-	sstate   map[string]string
-	fstate   map[string]float64
+	viper      *viper.Viper
+	ssensors   map[string]*sensorStateAsString
+	fsensors   map[string]*sensorStateAsFloat
+	sstate     map[string]string
+	fstate     map[string]float64
+	publishers []Publisher
 }
 
 // New will return a new instance of 'Sensors'
@@ -87,6 +87,21 @@ func New() (*Sensors, error) {
 	return s, nil
 }
 
+func (s *Sensors) getStringSensor(sensorName string) *sensorStateAsString {
+	sensor, exists := s.ssensors[sensorName]
+	if !exists {
+		return sensor
+	}
+	return nil
+}
+func (s *Sensors) getFloatSensor(sensorName string) *sensorStateAsFloat {
+	sensor, exists := s.fsensors[sensorName]
+	if !exists {
+		return sensor
+	}
+	return nil
+}
+
 func (s *Sensors) getStateString(sensorName string) string {
 	state, exists := s.sstate[sensorName]
 	if !exists {
@@ -115,24 +130,38 @@ func (s *Sensors) setStateFloat(sensorName string, sensorState float64) {
 	s.fstate[sensorName] = sensorState
 }
 
-func (s *Sensors) Process(state *state.Instance) {
-	for sname := range s.ssensors {
-		if state.HasStringState(sname) {
-			s.setStateString(sname, state.Strings[sname])
+func (s *Sensors) UpdateSensor(name string, state string) {
+	stringSensor := s.getStringSensor(name)
+	if stringSensor != nil {
+		s.setStateString(name, state)
+	} else {
+		floatSensor := s.getFloatSensor(name)
+		if floatSensor != nil {
+			float, err := strconv.ParseFloat(state, 64)
+			if err == nil {
+				s.setStateFloat(name, float)
+			}
 		}
 	}
+}
 
-	for sname := range s.fsensors {
-		if state.HasFloatState(sname) {
-			s.setStateFloat(sname, state.Floats[sname])
+type Publisher interface {
+	PublishString(name string, value string)
+	PublishFloat(name string, value float64)
+}
+
+func (s *Sensors) RegisterPublisher(pub Publisher) {
+	s.publishers = append(s.publishers, pub)
+}
+
+func (s *Sensors) Process() {
+
+	for _, pub := range s.publishers {
+		for name, value := range s.sstate {
+			pub.PublishString(name, value)
+		}
+		for name, value := range s.fstate {
+			pub.PublishFloat(name, value)
 		}
 	}
-
-	// @TODO: Send sensors to home-assistant
-
-	// req, err := http.NewRequest("POST", HassURL+v.Sensor, bytes.NewBuffer(sensorJSON))
-	// req.Header.Set("Content-Type", "application/json")
-	// client := &http.Client{}
-	// _, err = client.Do(req)
-
 }

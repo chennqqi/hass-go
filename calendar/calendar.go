@@ -3,26 +3,20 @@ package calendar
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/PuloV/ics-golang"
 	"github.com/jurgen-kluft/hass-go/dynamic"
-	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
 
 type Calendar struct {
-	viper   *viper.Viper
-	sevents map[string]string
-	fevents map[string]float64
+	viper *viper.Viper
+	subs  []EventSubscriber
 }
 
 func New() (*Calendar, error) {
 	c := &Calendar{}
-	c.sevents = map[string]string{}
-	c.fevents = map[string]float64{}
 
 	c.viper = viper.New()
 
@@ -34,23 +28,17 @@ func New() (*Calendar, error) {
 	if err != nil {                                  // Handle errors reading the config file
 		return nil, err
 	}
-	events := dynamic.Dynamic{Item: c.viper.Get("event")}
-	for _, event := range events.ArrayIter() {
-		ename := event.Get("name").AsString()
-		etype := event.Get("typeof").AsString()
-		if etype == "string" {
-			estate := event.Get("state").AsString()
-			c.sevents[ename] = estate
-		} else if etype == "float" {
-			estate := event.Get("state").AsFloat64()
-			c.fevents[ename] = estate
-		}
-	}
 
 	return c, nil
 }
 
-func updateEvents(calendars []*ics.Calendar, state *state.Instance) error {
+func (c *Calendar) pushEvent(uuid string, title string, descr string, start time.Time, end time.Time) {
+	for _, s := range c.subs {
+		s.Handle(uuid, title, descr, start, end)
+	}
+}
+
+func (c *Calendar) updateEvents(calendars []*ics.Calendar) error {
 	when := time.Now()
 	for _, cal := range calendars {
 		// get events for time 'when'
@@ -61,23 +49,14 @@ func updateEvents(calendars []*ics.Calendar, state *state.Instance) error {
 
 		for _, e := range eventsForDay {
 			title := e.GetSummary()
-			//fmt.Printf("Calendar title: '%s'\n", title)
-			e := strings.Split(title, ".")
-			if len(e) == 2 {
-				//fmt.Printf("Calendar event: %s-%s\n", e[0], e[1])
-				if state.HasStringState(e[0]) {
-					state.SetStringState(e[0], e[1])
-				} else if state.HasFloatState(e[0]) {
-					f, _ := strconv.ParseFloat(e[1], 64)
-					state.SetFloatState(e[0], f)
-				}
-			}
+			descr := e.GetDescription()
+			c.pushEvent(e.GenerateEventId(), title, descr, e.GetStart(), e.GetEnd())
 		}
 	}
 	return nil
 }
 
-func (c *Calendar) download(state *state.Instance) (err error) {
+func (c *Calendar) download() (err error) {
 	parser := ics.New()
 	ics.DeleteTempFiles = false
 	input := parser.GetInputChan()
@@ -105,8 +84,7 @@ func (c *Calendar) download(state *state.Instance) (err error) {
 		return errors.New("No calendars (need one)")
 	}
 
-	// get events for time 'when' (using first calendar)
-	errEvents := updateEvents(cals, state)
+	errEvents := c.updateEvents(cals)
 	if errEvents != nil { // error -> error
 		return errEvents
 	}
@@ -114,20 +92,43 @@ func (c *Calendar) download(state *state.Instance) (err error) {
 	return nil
 }
 
+type EventSubscriber interface {
+	Handle(UUID string, title string, description string, start time.Time, end time.Time)
+}
+
+func (c *Calendar) Register(subscriber EventSubscriber) {
+	c.subs = append(c.subs, subscriber)
+}
+
 // Process will update 'events' from the calendar
-func (c *Calendar) Process(state *state.Instance) error {
-	// First set all states we are tracking to their default
-	// because not every event might occur in the calendar at
-	// this specific date/time.
-	for k, v := range c.sevents {
-		state.SetStringState(k, v)
+func (c *Calendar) Process() error {
+	// Other general states
+	now := time.Now()
+	weekend := now.Weekday() == time.Saturday || now.Weekday() == time.Sunday
+	varStart := now
+	varEnd := now
+	varStr1 := ""
+	varStr2 := ""
+	if weekend {
+		day := now.Day()
+		if now.Weekday() == time.Sunday {
+			day--
+		}
+		varStart = time.Date(now.Year(), now.Month(), day, 0, 0, 0, 0, now.Location())
+		varEnd = time.Date(now.Year(), now.Month(), day+1, 23, 59, 59, 0, now.Location())
+		varStr1 = "var:weekend=true"
+		varStr2 = "var:weekday=false"
+	} else {
+		varStart = time.Date(now.Year(), now.Month(), int(time.Monday), 0, 0, 0, 0, now.Location())
+		varEnd = time.Date(now.Year(), now.Month(), int(time.Friday), 23, 59, 59, 0, now.Location())
+		varStr1 = "var:weekend=false"
+		varStr2 = "var:weekday=true"
 	}
-	for k, v := range c.fevents {
-		state.SetFloatState(k, v)
-	}
+	c.pushEvent("calendar.weekend", varStr1, "Is it weekend?", varStart, varEnd)
+	c.pushEvent("calendar.weekday", varStr2, "Is it a weekday?", varStart, varEnd)
 
 	// Download calendar
-	err := c.download(state)
+	err := c.download()
 	if err != nil {
 		return err
 	}

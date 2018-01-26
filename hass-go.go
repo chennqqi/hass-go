@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jurgen-kluft/hass-go/calendar"
@@ -39,29 +41,68 @@ import (
 //   - Alarms
 // - Sleep
 
+type calendarEventSubscriber struct {
+	sensorsInstance *sensors.Sensors
+}
+
+func (c *calendarEventSubscriber) Handle(UUID string, title string, description string, start time.Time, end time.Time) {
+
+	var domain string
+	var dname string
+	var dstate string
+	title = strings.Replace(title, ":", " : ", 1)
+	title = strings.Replace(title, "=", " = ", 1)
+	fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
+	//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
+
+	if domain == "sensor" {
+		c.sensorsInstance.UpdateSensor(dname, dstate)
+	}
+}
+
+type sensorsToConsole struct {
+}
+
+func (s *sensorsToConsole) PublishString(name string, value string) {
+	fmt.Printf("Publish Sensor: %s = %s\n", name, value)
+}
+func (s *sensorsToConsole) PublishFloat(name string, value float64) {
+	fmt.Printf("Publish Sensor: %s = %f\n", name, value)
+}
+
 func main() {
 
 	// TODO: implement the main hass-go function
 	time.LoadLocation("Asia/Shanghai")
 
 	// Create:
-	state := state.New()
-	calendar, _ := calendar.New()
+	stateInstance := state.New()
+	calendarInstance, _ := calendar.New()
 	// im,  := im.New()
-	weather, _ := weather.New()
-	suncalc, _ := suncalc.New()
-	sensors, _ := sensors.New()
-	lighting, _ := lighting.New(state)
+	weatherInstance, _ := weather.New()
+	suncalcInstance, _ := suncalc.New()
+	sensorsInstance, _ := sensors.New()
+	lightingInstance, _ := lighting.New(stateInstance)
+
+	// Create handlers and publishers
+	calendarSubscriber := &calendarEventSubscriber{}
+	calendarSubscriber.sensorsInstance = sensorsInstance
+	sensorsPublisher := &sensorsToConsole{}
+
+	// Register
+	calendarInstance.Register(calendarSubscriber)
+	sensorsInstance.RegisterPublisher(sensorsPublisher)
 
 	// Process
-	calerr := calendar.Process(state)
+	calerr := calendarInstance.Process()
 	if calerr != nil {
 		panic(calerr)
 	}
-	suncalc.Process(state)
-	weather.Process(state)
-	lighting.Process(state)
-	sensors.Process(state)
+	suncalcInstance.Process(stateInstance)
+	weatherInstance.Process(stateInstance)
+	lightingInstance.Process(stateInstance)
+	sensorsInstance.Process()
 
-	state.Print()
+	stateInstance.Print()
+
 }

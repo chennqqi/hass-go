@@ -12,6 +12,13 @@ type Instance struct {
 	Times   map[string]time.Time
 }
 
+// Domain is a map that holds multiple instances like:
+// "sensor"
+// "report"
+type Domain struct {
+	Domain map[string]Instance
+}
+
 // New constructs a new Instance
 func New() *Instance {
 	s := &Instance{}
