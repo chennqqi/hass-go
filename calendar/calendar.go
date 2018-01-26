@@ -96,7 +96,7 @@ type EventSubscriber interface {
 	Handle(UUID string, title string, description string, start time.Time, end time.Time)
 }
 
-func (c *Calendar) Register(subscriber EventSubscriber) {
+func (c *Calendar) RegisterSubscriber(subscriber EventSubscriber) {
 	c.subs = append(c.subs, subscriber)
 }
 

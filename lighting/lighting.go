@@ -170,6 +170,10 @@ func computeTimeSpanX(start, end, t time.Time) float64 {
 	return x
 }
 
+type Subscriber interface {
+	Message(season string)
+}
+
 // Process will update 'string'states and 'float'states
 // States are both input and output, for example as input
 // there are Season/Weather states like 'Season':'Winter'

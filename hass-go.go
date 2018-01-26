@@ -70,6 +70,28 @@ func (s *sensorsToConsole) PublishFloat(name string, value float64) {
 	fmt.Printf("Publish Sensor: %s = %f\n", name, value)
 }
 
+type weatherSubscriber struct {
+}
+
+func (w *weatherSubscriber) Report(from time.Time, until time.Time, rain float64, clouds float64, temperature float64) {
+
+	// Get hourly report, cut off the head of anything that is before 'from'
+	// Trim the tail of anything that is beyond 'until'
+
+	// Report is like this:
+	//   today            : Rain = 50%, Temperature = min - max
+	//   air quality      : 50-100, Moderate
+	//   sunrise   ( 6- 8): Fog, Soft breeze, 10 Celcius (Cool)
+	//   morning   ( 8-10): Light Drizzle, Soft breeze, 8 to 13 Celcius (Cool)
+	//   morning   (10-12):
+	//   noon      (12-14):
+	//   afternoon (14-16):
+	//   afternoon (16-18):
+	//   evening   (18-20):
+	//
+
+}
+
 func main() {
 
 	// TODO: implement the main hass-go function
@@ -88,10 +110,12 @@ func main() {
 	calendarSubscriber := &calendarEventSubscriber{}
 	calendarSubscriber.sensorsInstance = sensorsInstance
 	sensorsPublisher := &sensorsToConsole{}
+	weatherSubscriberInstance := &weatherSubscriber{}
 
 	// Register
-	calendarInstance.Register(calendarSubscriber)
+	calendarInstance.RegisterSubscriber(calendarSubscriber)
 	sensorsInstance.RegisterPublisher(sensorsPublisher)
+	weatherInstance.RegisterSubscriber(weatherSubscriberInstance)
 
 	// Process
 	calerr := calendarInstance.Process()
@@ -99,7 +123,7 @@ func main() {
 		panic(calerr)
 	}
 	suncalcInstance.Process(stateInstance)
-	weatherInstance.Process(stateInstance)
+	weatherInstance.Process()
 	lightingInstance.Process(stateInstance)
 	sensorsInstance.Process()
 
