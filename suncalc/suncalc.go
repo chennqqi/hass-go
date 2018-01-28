@@ -462,9 +462,9 @@ func (s *Instance) Process(state *state.Instance) {
 		//	descr string
 		//	start time.Time
 		//	end   time.Time
-		state.SetTimeState(m.title+":begin", m.start)
-		state.SetTimeState(m.title+":end", m.end)
+		state.SetTimeState(m.title+".begin", m.start)
+		state.SetTimeState(m.title+".end", m.end)
 	}
 	_, moonPhase, _ := getMoonIllumination(time.Now())
-	state.SetFloatState("moon:phase", moonPhase)
+	state.SetFloatState("suncalc:moon.phase", moonPhase)
 }

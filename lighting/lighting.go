@@ -65,9 +65,10 @@ type Instance struct {
 	addtimes   []addtime
 	lighttable []lighttime
 	lighttypes []lighttype
+	state      *state.Instance
 }
 
-func New(state *state.Instance) (*Instance, error) {
+func New() (*Instance, error) {
 	l := &Instance{}
 	l.viper = viper.New()
 	l.season = map[string]seasonmod{}
@@ -75,6 +76,7 @@ func New(state *state.Instance) (*Instance, error) {
 	l.addtimes = []addtime{}
 	l.lighttable = []lighttime{}
 	l.lighttypes = []lighttype{}
+	l.state = state.New()
 
 	// Viper command-line package
 	l.viper.SetConfigName("hass-go-lighting")        // name of config file (without extension)
@@ -170,30 +172,27 @@ func computeTimeSpanX(start, end, t time.Time) float64 {
 	return x
 }
 
-type Subscriber interface {
-	Message(season string)
-}
-
 // Process will update 'string'states and 'float'states
 // States are both input and output, for example as input
 // there are Season/Weather states like 'Season':'Winter'
 // and 'Clouds':0.5
 func (l *Instance) Process(state *state.Instance) {
-	now := time.Now()
+	// Update our internal state with 'state'
+	l.state.Merge(state)
+
+	now := l.state.GetTimeState("time:now", time.Now())
 
 	// Add our custom time-points
 	for _, at := range l.addtimes {
-		if state.HasTimeState(at.name) {
-			t := state.GetTimeState(at.name, now)
-			t = t.Add(at.shift)
-			state.SetTimeState(at.name+at.tag, t)
-		}
+		t := l.state.GetTimeState(at.name, now)
+		t = t.Add(at.shift)
+		l.state.SetTimeState(at.name+at.tag, t)
 	}
 	current := lighttime{}
 	currentx := 0.0 // Time interpolation factor, where are we between startMoment - endMoment
 	for _, lt := range l.lighttable {
-		t0 := state.GetTimeState(lt.startMoment, now)
-		t1 := state.GetTimeState(lt.endMoment, now)
+		t0 := l.state.GetTimeState(lt.startMoment, now)
+		t1 := l.state.GetTimeState(lt.endMoment, now)
 		if inTimeSpan(t0, t1, now) {
 			current = lt
 			currentx = computeTimeSpanX(t0, t1, now)
@@ -202,10 +201,10 @@ func (l *Instance) Process(state *state.Instance) {
 		}
 	}
 
-	seasonName := state.GetStringState("Season", "Winter")
+	seasonName := l.state.GetStringState("time:season", "winter")
 	season := l.season[seasonName]
 	clouds := weathermod{clouds: 0.0, ct_pct: 0.0, bri_pct: 0.0}
-	cloudFac := state.GetFloatState("Clouds", 0.0)
+	cloudFac := l.state.GetFloatState("Clouds", 0.0)
 	for _, w := range l.weather {
 		if cloudFac <= w.clouds {
 			clouds = w
@@ -244,21 +243,20 @@ func (l *Instance) Process(state *state.Instance) {
 	}
 	BRI = season.minBRI + (BRI * (season.maxBRI - season.minBRI))
 
-	// Update the state of the following string states
-	// - lights_HUE_CT
-	// - lights_HUE_BRI
-	// - lights_YEE_CT
-	// - lights_YEE_BRI
+	// TODO: Put into configuration TOML
+	// Update 'state' for the following
+	// - sensor:lights_HUE_CT
+	// - sensor:lights_HUE_BRI
+	// - sensor:lights_YEE_CT
+	// - sensor:lights_YEE_BRI
 	for _, ltype := range l.lighttypes {
 		lct := ltype.minCT + CT*(ltype.maxCT-ltype.minCT)
-		state.SetFloatState("lights_"+ltype.name+"_CT", lct)
-
 		lbri := ltype.minBRI + BRI*(ltype.maxBRI-ltype.minBRI)
-		state.SetFloatState("lights_"+ltype.name+"_BRI", lbri)
+		state.SetFloatState("sensor:lights_"+ltype.name+"_CT", lct)
+		state.SetFloatState("sensor:lights_"+ltype.name+"_BRI", lbri)
 	}
 
-	state.SetFloatState("lights_CT", CT)
-	state.SetFloatState("lights_BRI", BRI)
-	state.SetStringState("lights_DOL", current.darkorlight)
-
+	state.SetFloatState("sensor:lights_CT", CT)
+	state.SetFloatState("sensor:lights_BRI", BRI)
+	state.SetStringState("sensor:lights_DOL", current.darkorlight)
 }

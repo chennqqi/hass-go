@@ -41,39 +41,35 @@ import (
 //   - Alarms
 // - Sleep
 
-type calendarEventSubscriber struct {
-	sensorsInstance *sensors.Sensors
+func PrintCalEventsToConsole(events []calendar.CEvent) {
+	for _, e := range events {
+		var domain string
+		var dname string
+		var dstate string
+		title := strings.Replace(e.Title, ":", " : ", 1)
+		title = strings.Replace(title, "=", " = ", 1)
+		fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
+		//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
+
+		fmt.Printf("CalEvent %s: %s = %s (%s)\n", domain, dname, dstate, e.Description)
+	}
 }
-
-func (c *calendarEventSubscriber) Handle(UUID string, title string, description string, start time.Time, end time.Time) {
-
-	var domain string
-	var dname string
-	var dstate string
-	title = strings.Replace(title, ":", " : ", 1)
-	title = strings.Replace(title, "=", " = ", 1)
-	fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
-	//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
-
-	if domain == "sensor" {
-		c.sensorsInstance.UpdateSensor(dname, dstate)
+func UpdateCalEventsToState(events []calendar.CEvent, sensors *sensors.Sensors) {
+	for _, e := range events {
+		var domain string
+		var dname string
+		var dstate string
+		title := strings.Replace(e.Title, ":", " : ", 1)
+		title = strings.Replace(title, "=", " = ", 1)
+		fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
+		//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
+		if domain == "sensor" {
+			sensors.UpdateSensor(dname, dstate)
+		}
 	}
 }
 
-type sensorsToConsole struct {
-}
-
-func (s *sensorsToConsole) PublishString(name string, value string) {
-	fmt.Printf("Publish Sensor: %s = %s\n", name, value)
-}
-func (s *sensorsToConsole) PublishFloat(name string, value float64) {
-	fmt.Printf("Publish Sensor: %s = %f\n", name, value)
-}
-
-type weatherSubscriber struct {
-}
-
-func (w *weatherSubscriber) Report(from time.Time, until time.Time, rain float64, clouds float64, temperature float64) {
+func HandleWeatherReport(report []weather.Report) {
 
 	// Get hourly report, cut off the head of anything that is before 'from'
 	// Trim the tail of anything that is beyond 'until'
@@ -99,33 +95,48 @@ func main() {
 
 	// Create:
 	stateInstance := state.New()
+	stateInstance.SetTimeState("Now", time.Now())
+
 	calendarInstance, _ := calendar.New()
 	// im,  := im.New()
 	weatherInstance, _ := weather.New()
 	suncalcInstance, _ := suncalc.New()
 	sensorsInstance, _ := sensors.New()
-	lightingInstance, _ := lighting.New(stateInstance)
-
-	// Create handlers and publishers
-	calendarSubscriber := &calendarEventSubscriber{}
-	calendarSubscriber.sensorsInstance = sensorsInstance
-	sensorsPublisher := &sensorsToConsole{}
-	weatherSubscriberInstance := &weatherSubscriber{}
-
-	// Register
-	calendarInstance.RegisterSubscriber(calendarSubscriber)
-	sensorsInstance.RegisterPublisher(sensorsPublisher)
-	weatherInstance.RegisterSubscriber(weatherSubscriberInstance)
+	lightingInstance, _ := lighting.New()
+	lightingState := state.New()
+	sensorState := state.New()
 
 	// Process
-	calerr := calendarInstance.Process()
+	calEvents, calerr := calendarInstance.Process()
 	if calerr != nil {
 		panic(calerr)
 	}
+	PrintCalEventsToConsole(calEvents)
+	UpdateCalEventsToState(calEvents, sensorsInstance)
+
 	suncalcInstance.Process(stateInstance)
-	weatherInstance.Process()
+	weatherReport := weatherInstance.Process()
+	HandleWeatherReport(weatherReport)
+
 	lightingInstance.Process(stateInstance)
-	sensorsInstance.Process()
+	for k, v := range stateInstance.Strings {
+		if strings.HasPrefix(k, "sensor:") {
+			fmt.Printf("Lighting State: %s = %s\n", k, v)
+		}
+	}
+	for k, v := range lightingState.Floats {
+		if strings.HasPrefix(k, "sensor:") {
+			fmt.Printf("Lighting State: %s = %f\n", k, v)
+		}
+	}
+
+	sensorsInstance.PublishSensors(sensorState)
+	for k, v := range sensorState.Strings {
+		fmt.Printf("Publish Sensor: %s = %s\n", k, v)
+	}
+	for k, v := range sensorState.Floats {
+		fmt.Printf("Publish Sensor: %s = %f\n", k, v)
+	}
 
 	stateInstance.Print()
 

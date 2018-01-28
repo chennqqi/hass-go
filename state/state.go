@@ -28,6 +28,19 @@ func New() *Instance {
 	return s
 }
 
+// Merge will take all states of 'from' and insert them into 's'
+func (s *Instance) Merge(from *Instance) {
+	for k, v := range from.Strings {
+		s.Strings[k] = v
+	}
+	for k, v := range from.Floats {
+		s.Floats[k] = v
+	}
+	for k, v := range from.Times {
+		s.Times[k] = v
+	}
+}
+
 func (s *Instance) HasStringState(name string) bool {
 	_, exists := s.Strings[name]
 	return exists
