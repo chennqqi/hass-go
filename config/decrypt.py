@@ -3,10 +3,10 @@ import pyAesCrypt
 bufferSize = 64 * 1024
 password = password = input("Enter password: ")
 # decrypt
-pyAesCrypt.decryptFile("hass-go-calendar.toml.aes", "hass-go-calendar.toml", password, bufferSize)
-pyAesCrypt.decryptFile("hass-go-sensors.toml.aes", "hass-go-sensors.toml", password, bufferSize)
-pyAesCrypt.decryptFile("hass-go-slack.toml.aes", "hass-go-slack.toml", password, bufferSize)
-pyAesCrypt.decryptFile("hass-go-weather.toml.aes", "hass-go-weather.toml", password, bufferSize)
-pyAesCrypt.decryptFile("hass-go-secrets.toml.aes", "hass-go-secrets.toml", password, bufferSize)
-pyAesCrypt.decryptFile("hass-go-suncalc.toml.aes",  "hass-go-suncalc.toml", password, bufferSize)
-pyAesCrypt.decryptFile("hass-go-lighting.toml.aes",  "hass-go-lighting.toml", password, bufferSize)
+pyAesCrypt.decryptFile("calendar.toml.aes", "calendar.toml", password, bufferSize)
+pyAesCrypt.decryptFile("sensors.toml.aes", "sensors.toml", password, bufferSize)
+pyAesCrypt.decryptFile("slack.toml.aes", "slack.toml", password, bufferSize)
+pyAesCrypt.decryptFile("weather.toml.aes", "weather.toml", password, bufferSize)
+pyAesCrypt.decryptFile("secrets.toml.aes", "secrets.toml", password, bufferSize)
+pyAesCrypt.decryptFile("suncalc.toml.aes",  "suncalc.toml", password, bufferSize)
+pyAesCrypt.decryptFile("lighting.toml.aes",  "lighting.toml", password, bufferSize)
