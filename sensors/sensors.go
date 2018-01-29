@@ -1,6 +1,7 @@
 package sensors
 
 import (
+	"github.com/jurgen-kluft/hass-go/state"
 	"strconv"
 
 	"github.com/jurgen-kluft/hass-go/dynamic"
@@ -27,12 +28,11 @@ type sensorStateAsFloat struct {
 
 // Sensors is an instance to track sensor state
 type Sensors struct {
-	viper      *viper.Viper
-	ssensors   map[string]*sensorStateAsString
-	fsensors   map[string]*sensorStateAsFloat
-	sstate     map[string]string
-	fstate     map[string]float64
-	publishers []Publisher
+	viper    *viper.Viper
+	ssensors map[string]*sensorStateAsString
+	fsensors map[string]*sensorStateAsFloat
+	sstate   map[string]string
+	fstate   map[string]float64
 }
 
 // New will return a new instance of 'Sensors'
@@ -70,6 +70,7 @@ func New() (*Sensors, error) {
 			}
 
 			s.ssensors[o.name] = o
+			s.sstate[o.name] = o.defaultState
 		} else if typeof == "float" {
 			o := &sensorStateAsFloat{}
 			o.name = e.Get("name").AsString()
@@ -81,6 +82,7 @@ func New() (*Sensors, error) {
 			o.max = e.Get("max").AsFloat64()
 
 			s.fsensors[o.name] = o
+			s.fstate[o.name] = o.defaultState
 		}
 	}
 
@@ -130,6 +132,7 @@ func (s *Sensors) setStateFloat(sensorName string, sensorState float64) {
 	s.fstate[sensorName] = sensorState
 }
 
+// UpdateSensor updates that state of sensor 'name' with value 'state'
 func (s *Sensors) UpdateSensor(name string, state string) {
 	stringSensor := s.getStringSensor(name)
 	if stringSensor != nil {
@@ -145,23 +148,13 @@ func (s *Sensors) UpdateSensor(name string, state string) {
 	}
 }
 
-type Publisher interface {
-	PublishString(name string, value string)
-	PublishFloat(name string, value float64)
-}
+// PublishSensors will write out the sensors to 'out'
+func (s *Sensors) PublishSensors(out *state.Instance) {
 
-func (s *Sensors) RegisterPublisher(pub Publisher) {
-	s.publishers = append(s.publishers, pub)
-}
-
-func (s *Sensors) Process() {
-
-	for _, pub := range s.publishers {
-		for name, value := range s.sstate {
-			pub.PublishString(name, value)
-		}
-		for name, value := range s.fstate {
-			pub.PublishFloat(name, value)
-		}
+	for name, value := range s.sstate {
+		out.SetStringState("publish:"+name, value)
+	}
+	for name, value := range s.fstate {
+		out.SetFloatState("publish:"+name, value)
 	}
 }

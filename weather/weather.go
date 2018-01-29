@@ -14,11 +14,10 @@ func converFToC(fahrenheit float64) float64 {
 }
 
 type Client struct {
-	viper       *viper.Viper
-	location    *time.Location
-	darksky     *darksky.Client
-	darkargs    map[string]string
-	subscribers []Subscriber
+	viper    *viper.Viper
+	location *time.Location
+	darksky  *darksky.Client
+	darkargs map[string]string
 }
 
 func New() (*Client, error) {
@@ -55,12 +54,12 @@ func (c *Client) DetermineRain(d darksky.DataPoint) {
 	}
 }
 
-type Subscriber interface {
-	Report(from time.Time, until time.Time, rain float64, clouds float64, temperature float64)
-}
-
-func (c *Client) RegisterSubscriber(sub Subscriber) {
-	c.subscribers = append(c.subscribers, sub)
+type Report struct {
+	From        time.Time
+	Until       time.Time
+	Rain        float64
+	Clouds      float64
+	Temperature float64
 }
 
 const (
@@ -71,14 +70,20 @@ func timeLater(date time.Time, t float64) time.Time {
 	return time.Unix(date.Unix()+int64(t*float64(daySeconds)/24.0), 0)
 }
 
-func (c *Client) Process() {
+func (c *Client) Process() []Report {
 	loc := dynamic.Dynamic{Item: c.viper.Get("location")}
 	forecast, err := c.darksky.GetForecast(loc.Get("latitude").AsString(), loc.Get("longitude").AsString(), c.darkargs)
+	report := []Report{}
 	if err == nil {
 		from := time.Now()
 		until := timeLater(from, 1.0)
-		for _, s := range c.subscribers {
-			s.Report(from, until, forecast.Currently.PrecipProbability, forecast.Currently.CloudCover, forecast.Currently.ApparentTemperature)
-		}
+		w := Report{}
+		w.From = from
+		w.Until = until
+		w.Rain = forecast.Currently.PrecipProbability
+		w.Clouds = forecast.Currently.CloudCover
+		w.Temperature = forecast.Currently.ApparentTemperature
+		report = append(report, w)
 	}
+	return report
 }
