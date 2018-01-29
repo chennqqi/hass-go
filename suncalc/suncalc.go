@@ -421,6 +421,7 @@ func New() (*Instance, error) {
 	s.viper.AddConfigPath("config/") // optionally look for config in the working directory
 	err := s.viper.ReadInConfig()    // Find and read the config file
 	if err != nil {                  // Handle errors reading the config file
+		fmt.Printf("%v\n", err)
 		return nil, err
 	}
 

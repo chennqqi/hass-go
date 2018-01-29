@@ -68,8 +68,8 @@ func main() {
 	states := state.New()
 	states.SetTimeState("time", "now", now)
 
-	calendarInstance, _ := calendar.New()
 	// im,  := im.New()
+	calendarInstance, _ := calendar.New()
 	weatherInstance, _ := weather.New()
 	suncalcInstance, _ := suncalc.New()
 	sensorsInstance, _ := sensors.New()
