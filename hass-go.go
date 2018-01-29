@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jurgen-kluft/hass-go/calendar"
@@ -41,34 +39,6 @@ import (
 //   - Alarms
 // - Sleep
 
-func PrintCalEventsToConsole(events []calendar.CEvent) {
-	for _, e := range events {
-		var domain string
-		var dname string
-		var dstate string
-		title := strings.Replace(e.Title, ":", " : ", 1)
-		title = strings.Replace(title, "=", " = ", 1)
-		fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
-		//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
-
-		fmt.Printf("CalEvent %s: %s = %s (%s)\n", domain, dname, dstate, e.Description)
-	}
-}
-func UpdateCalEventsToState(events []calendar.CEvent, sensors *sensors.Sensors) {
-	for _, e := range events {
-		var domain string
-		var dname string
-		var dstate string
-		title := strings.Replace(e.Title, ":", " : ", 1)
-		title = strings.Replace(title, "=", " = ", 1)
-		fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
-		//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
-		if domain == "sensor" {
-			sensors.UpdateSensor(dname, dstate)
-		}
-	}
-}
-
 func HandleWeatherReport(report []weather.Report) {
 
 	// Get hourly report, cut off the head of anything that is before 'from'
@@ -92,10 +62,11 @@ func main() {
 
 	// TODO: implement the main hass-go function
 	time.LoadLocation("Asia/Shanghai")
+	now := time.Now()
 
 	// Create:
-	stateInstance := state.New()
-	stateInstance.SetTimeState("Now", time.Now())
+	states := state.New()
+	states.SetTimeState("time", "now", now)
 
 	calendarInstance, _ := calendar.New()
 	// im,  := im.New()
@@ -103,41 +74,21 @@ func main() {
 	suncalcInstance, _ := suncalc.New()
 	sensorsInstance, _ := sensors.New()
 	lightingInstance, _ := lighting.New()
-	lightingState := state.New()
-	sensorState := state.New()
 
 	// Process
-	calEvents, calerr := calendarInstance.Process()
+	calerr := calendarInstance.Process(states)
 	if calerr != nil {
 		panic(calerr)
 	}
-	PrintCalEventsToConsole(calEvents)
-	UpdateCalEventsToState(calEvents, sensorsInstance)
 
-	suncalcInstance.Process(stateInstance)
-	weatherReport := weatherInstance.Process()
+	suncalcInstance.Process(states)
+	weatherReport := weatherInstance.Process(now)
 	HandleWeatherReport(weatherReport)
 
-	lightingInstance.Process(stateInstance)
-	for k, v := range stateInstance.Strings {
-		if strings.HasPrefix(k, "sensor:") {
-			fmt.Printf("Lighting State: %s = %s\n", k, v)
-		}
-	}
-	for k, v := range lightingState.Floats {
-		if strings.HasPrefix(k, "sensor:") {
-			fmt.Printf("Lighting State: %s = %f\n", k, v)
-		}
-	}
+	lightingInstance.Process(states)
+	sensorsInstance.PublishSensors(states)
 
-	sensorsInstance.PublishSensors(sensorState)
-	for k, v := range sensorState.Strings {
-		fmt.Printf("Publish Sensor: %s = %s\n", k, v)
-	}
-	for k, v := range sensorState.Floats {
-		fmt.Printf("Publish Sensor: %s = %f\n", k, v)
-	}
+	states.Print()
 
-	stateInstance.Print()
-
+	states.Clear("publish")
 }

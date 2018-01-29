@@ -1,63 +1,84 @@
 package calendar
 
 import (
-	"github.com/jurgen-kluft/go-icloud-calendar"
-	"github.com/jurgen-kluft/hass-go/dynamic"
-	"github.com/spf13/viper"
 	"time"
+
+	"github.com/jurgen-kluft/hass-go/dynamic"
+	"github.com/jurgen-kluft/hass-go/state"
+	"github.com/spf13/viper"
 )
 
 type Calendar struct {
-	viper *viper.Viper
-	cals  []*icalendar.Calendar
+	viper  *viper.Viper
+	events map[string]cevent
+	//cals  []*icalendar.Calendar
+}
+
+type cevent struct {
+	calendar string
+	domain   string
+	name     string
+	state    string
+	typeof   string
+	values   []string
 }
 
 func New() (*Calendar, error) {
 	c := &Calendar{}
-
 	c.viper = viper.New()
+	c.events = map[string]cevent{}
 
 	// Viper command-line package
-	c.viper.SetConfigName("hass-go-calendar")        // name of config file (without extension)
-	c.viper.AddConfigPath("$HOME/.hass-go-calendar") // call multiple times to add many search paths
-	c.viper.AddConfigPath(".")                       // optionally look for config in the working directory
-	err := c.viper.ReadInConfig()                    // Find and read the config file
-	if err != nil {                                  // Handle errors reading the config file
+	c.viper.SetConfigName("calendar") // name of config file (without extension)
+	c.viper.AddConfigPath("config/")  // optionally look for config in the working directory
+	err := c.viper.ReadInConfig()     // Find and read the config file
+	if err != nil {                   // Handle errors reading the config file
 		return nil, err
 	}
 
-	dcals := dynamic.Dynamic{Item: c.viper.Get("calendars")}
-	for _, dc := range dcals.ArrayIter() {
-		url := dc.Get("url").AsString()
-		cal := icalendar.NewURLCalendar(url)
-		c.cals = append(c.cals, cal)
+	devents := dynamic.Dynamic{Item: c.viper.Get("events")}
+	for _, de := range devents.ArrayIter() {
+		e := cevent{}
+		e.calendar = de.Get("calendar").AsString()
+		e.domain = de.Get("domain").AsString()
+		e.name = de.Get("name").AsString()
+		e.state = de.Get("state").AsString()
+		e.typeof = de.Get("typeof").AsString()
+		e.values = []string{}
+		for _, dv := range de.Get("values").ArrayIter() {
+			e.values = append(e.values, dv.AsString())
+		}
+		c.events[e.name] = e
 	}
 
 	return c, nil
 }
 
-func (c *Calendar) updateEvents(when time.Time) ([]CEvent, error) {
-	events := []CEvent{}
-	for _, cal := range c.cals {
-		eventsForDay := cal.GetEventsByDate(when)
+func (c *Calendar) updateEvents(states *state.Domain) error {
 
-		for _, e := range eventsForDay {
-			event := CEvent{}
-			event.UUID = e.GenerateUUID()
-			event.Title = e.Summary
-			event.Description = e.Description
-			event.Start = e.Start
-			event.End = e.End
-			events = append(events, event)
-		}
-	}
-	return events, nil
+	// for _, cal := range c.cals {
+	// 	eventsForDay := cal.GetEventsByDate(when)
+	//
+	// 	for _, e := range eventsForDay {
+	//	   var domain string
+	//	   var dname string
+	//	   var dstate string
+	//	   title := strings.Replace(e.Title, ":", " : ", 1)
+	//	   title = strings.Replace(title, "=", " = ", 1)
+	//	   fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
+	//	   //fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
+	//
+	//	   states.SetStringState(domain, dname, )
+	//
+	// 	}
+	// }
+	return nil
 }
 
 func (c *Calendar) load() (err error) {
-	for _, cal := range c.cals {
-		err = cal.Load()
-	}
+	//for _, cal := range c.cals {
+	//	err = cal.Load()
+	//}
 	return err
 }
 
@@ -89,56 +110,46 @@ func weekOrWeekEndStartEnd(now time.Time) (weekend bool, start, end time.Time) {
 	return weekend, start, end
 }
 
-type CEvent struct {
-	UUID        string
-	Title       string
-	Description string
-	Start       time.Time
-	End         time.Time
-}
+//type CEvent struct {
+//	UUID        string
+//	Title       string
+//	Description string
+//	Start       time.Time
+//	End         time.Time
+//}
 
 // Process will update 'events' from the calendar
-func (c *Calendar) Process() ([]CEvent, error) {
-	now := time.Now()
+func (c *Calendar) Process(states *state.Domain) error {
+	now := states.GetTimeState("time", "now", time.Now())
 
-	events := []CEvent{}
 	// Download calendar
 	err := c.load()
 	if err != nil {
-		return events, err
+		return err
 	}
 	// Update events
-	events, err = c.updateEvents(now)
+	err = c.updateEvents(states)
 	if err != nil {
-		return events, err
+		return err
 	}
 
 	// Other general states
-	varStr1 := ""
-	varStr2 := ""
 	weekend, varStart, varEnd := weekOrWeekEndStartEnd(now)
-	if weekend {
-		varStr1 = "var:weekend=true"
-		varStr2 = "var:weekday=false"
-	} else {
-		varStr1 = "var:weekend=false"
-		varStr2 = "var:weekday=true"
-	}
-	event := CEvent{}
-	event.UUID = "calendar.weekend"
-	event.Title = varStr1
-	event.Description = "Is it weekend?"
-	event.Start = varStart
-	event.End = varEnd
-	events = append(events, event)
 
-	event = CEvent{}
-	event.UUID = "calendar.weekday"
-	event.Title = varStr2
-	event.Description = "Is it a weekday?"
-	event.Start = varStart
-	event.End = varEnd
-	events = append(events, event)
+	states.SetBoolState("calendar", "weekend", weekend)
+	states.SetBoolState("calendar", "weekday", !weekend)
 
-	return events, err
+	states.SetTimeState("calendar", "weekend.start", varStart)
+	states.SetTimeState("calendar", "weekend.end", varEnd)
+
+	states.SetTimeState("calendar", "weekday.start", varStart)
+	states.SetTimeState("calendar", "weekday.end", varEnd)
+
+	states.SetStringState("calendar", "weekend.title", "Weekend")
+	states.SetStringState("calendar", "weekday.title", "Weekday")
+
+	states.SetStringState("calendar", "weekend.description", "Saturday and Sunday")
+	states.SetStringState("calendar", "weekday.description", "Monday to Friday")
+
+	return err
 }

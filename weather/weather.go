@@ -25,11 +25,10 @@ func New() (*Client, error) {
 	c.viper = viper.New()
 
 	// Viper command-line package
-	c.viper.SetConfigName("hass-go-weather")        // name of config file (without extension)
-	c.viper.AddConfigPath("$HOME/.hass-go-weather") // call multiple times to add many search paths
-	c.viper.AddConfigPath(".")                      // optionally look for config in the working directory
-	err := c.viper.ReadInConfig()                   // Find and read the config file
-	if err != nil {                                 // Handle errors reading the config file
+	c.viper.SetConfigName("weather") // name of config file (without extension)
+	c.viper.AddConfigPath("config/") // optionally look for config in the working directory
+	err := c.viper.ReadInConfig()    // Find and read the config file
+	if err != nil {                  // Handle errors reading the config file
 		return nil, err
 	}
 
@@ -66,17 +65,17 @@ const (
 	daySeconds = 60.0 * 60.0 * 24.0
 )
 
-func timeLater(date time.Time, t float64) time.Time {
-	return time.Unix(date.Unix()+int64(t*float64(daySeconds)/24.0), 0)
+func hoursLater(date time.Time, h float64) time.Time {
+	return time.Unix(date.Unix()+int64(h*float64(daySeconds)/24.0), 0)
 }
 
-func (c *Client) Process() []Report {
+func (c *Client) Process(now time.Time) []Report {
 	loc := dynamic.Dynamic{Item: c.viper.Get("location")}
 	forecast, err := c.darksky.GetForecast(loc.Get("latitude").AsString(), loc.Get("longitude").AsString(), c.darkargs)
 	report := []Report{}
 	if err == nil {
-		from := time.Now()
-		until := timeLater(from, 1.0)
+		from := now
+		until := hoursLater(from, 1.0)
 		w := Report{}
 		w.From = from
 		w.Until = until

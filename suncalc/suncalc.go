@@ -186,14 +186,14 @@ func (s *Instance) getMoments(date time.Time, lat float64, lng float64) (result 
 	Jnoon := solarTransitJ(ds, M, L)
 
 	mtimes := map[string]time.Time{}
-	mtimes["today:begin"] = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
-	mtimes["today:end"] = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
+	mtimes["today.begin"] = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	mtimes["today.end"] = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
 
-	mtimes["night:darkest"] = fromJulian(Jnoon - 0.5)
+	mtimes["night.darkest"] = fromJulian(Jnoon - 0.5)
 
 	noon := fromJulian(Jnoon)
-	mtimes["sun:noon:begin"] = hoursLater(noon, -0.15)
-	mtimes["sun:noon:end"] = hoursLater(noon, +0.15)
+	mtimes["sun.noon.begin"] = hoursLater(noon, -0.15)
+	mtimes["sun.noon.end"] = hoursLater(noon, +0.15)
 	for _, a := range s.angles {
 		Jset := getSetJ(a.angle*rad, lw, phi, dec, n, M, L)
 		Jrise := Jnoon - (Jset - Jnoon)
@@ -417,18 +417,18 @@ func New() (*Instance, error) {
 	s.viper = viper.New()
 
 	// Viper command-line package
-	s.viper.SetConfigName("hass-go-suncalc") // name of config file (without extension)
-	s.viper.AddConfigPath(".")               // optionally look for config in the working directory
-	err := s.viper.ReadInConfig()            // Find and read the config file
-	if err != nil {                          // Handle errors reading the config file
+	s.viper.SetConfigName("suncalc") // name of config file (without extension)
+	s.viper.AddConfigPath("config/") // optionally look for config in the working directory
+	err := s.viper.ReadInConfig()    // Find and read the config file
+	if err != nil {                  // Handle errors reading the config file
 		return nil, err
 	}
 
 	config := dynamic.Dynamic{Item: s.viper.Get("config")}
 	s.latitude = config.Get("latitude").AsFloat64()
 	s.longitude = config.Get("longitude").AsFloat64()
-	fmt.Printf("%v\n", s.latitude)
-	fmt.Printf("%v\n", s.longitude)
+	//fmt.Printf("%v\n", s.latitude)
+	//fmt.Printf("%v\n", s.longitude)
 
 	angles := dynamic.Dynamic{Item: s.viper.Get("anglecfg")}
 	fmt.Printf("%v\n", s.viper.Get("angle"))
@@ -453,18 +453,18 @@ func New() (*Instance, error) {
 	return s, nil
 }
 
-func (s *Instance) Process(state *state.Instance) {
-	lat := state.GetFloatState("latitude", s.latitude)
-	lng := state.GetFloatState("longitude", s.longitude)
+func (s *Instance) Process(states *state.Domain) {
+	lat := states.GetFloatState("geo", "latitude", s.latitude)
+	lng := states.GetFloatState("geo", "longitude", s.longitude)
 	moments := s.getMoments(time.Now(), lat, lng)
 	for _, m := range moments {
 		//	title string
 		//	descr string
 		//	start time.Time
 		//	end   time.Time
-		state.SetTimeState(m.title+".begin", m.start)
-		state.SetTimeState(m.title+".end", m.end)
+		states.SetTimeState("sun", m.title+".begin", m.start)
+		states.SetTimeState("sun", m.title+".end", m.end)
 	}
 	_, moonPhase, _ := getMoonIllumination(time.Now())
-	state.SetFloatState("suncalc:moon.phase", moonPhase)
+	states.SetFloatState("sun", "moon.phase", moonPhase)
 }

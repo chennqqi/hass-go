@@ -2,13 +2,13 @@ package sensors
 
 import (
 	"github.com/jurgen-kluft/hass-go/state"
-	"strconv"
 
 	"github.com/jurgen-kluft/hass-go/dynamic"
 	"github.com/spf13/viper"
 )
 
 type sensorStateAsString struct {
+	domain         string
 	name           string
 	typeof         string
 	unit           string
@@ -17,6 +17,7 @@ type sensorStateAsString struct {
 	possibleStates []string
 }
 type sensorStateAsFloat struct {
+	domain       string
 	name         string
 	typeof       string
 	unit         string
@@ -45,11 +46,10 @@ func New() (*Sensors, error) {
 	s.fstate = map[string]float64{}
 
 	// Viper command-line package
-	s.viper.SetConfigName("hass-go-sensors")        // name of config file (without extension)
-	s.viper.AddConfigPath("$HOME/.hass-go-sensors") // call multiple times to add many search paths
-	s.viper.AddConfigPath(".")                      // optionally look for config in the working directory
-	err := s.viper.ReadInConfig()                   // Find and read the config file
-	if err != nil {                                 // Handle errors reading the config file
+	s.viper.SetConfigName("sensors") // name of config file (without extension)
+	s.viper.AddConfigPath("config/") // optionally look for config in the working directory
+	err := s.viper.ReadInConfig()    // Find and read the config file
+	if err != nil {                  // Handle errors reading the config file
 		return nil, err
 	}
 
@@ -58,6 +58,7 @@ func New() (*Sensors, error) {
 		typeof := e.Get("typeof").AsString()
 		if typeof == "string" {
 			o := &sensorStateAsString{}
+			o.domain = e.Get("domain").AsString()
 			o.name = e.Get("name").AsString()
 			o.typeof = typeof
 			o.unit = e.Get("unit").AsString()
@@ -73,6 +74,7 @@ func New() (*Sensors, error) {
 			s.sstate[o.name] = o.defaultState
 		} else if typeof == "float" {
 			o := &sensorStateAsFloat{}
+			o.domain = e.Get("domain").AsString()
 			o.name = e.Get("name").AsString()
 			o.typeof = typeof
 			o.unit = e.Get("unit").AsString()
@@ -104,57 +106,14 @@ func (s *Sensors) getFloatSensor(sensorName string) *sensorStateAsFloat {
 	return nil
 }
 
-func (s *Sensors) getStateString(sensorName string) string {
-	state, exists := s.sstate[sensorName]
-	if !exists {
-		var sensor *sensorStateAsString
-		sensor, _ = s.ssensors[sensorName]
-		s.sstate[sensorName] = sensor.defaultState
-		state = sensor.defaultState
-	}
-	return state
-}
-func (s *Sensors) setStateString(sensorName string, sensorState string) {
-	s.sstate[sensorName] = sensorState
-}
-
-func (s *Sensors) getStateFloat(sensorName string) float64 {
-	state, exists := s.fstate[sensorName]
-	if !exists {
-		var sensor *sensorStateAsFloat
-		sensor, _ = s.fsensors[sensorName]
-		s.fstate[sensorName] = sensor.min
-		state = sensor.min
-	}
-	return state
-}
-func (s *Sensors) setStateFloat(sensorName string, sensorState float64) {
-	s.fstate[sensorName] = sensorState
-}
-
-// UpdateSensor updates that state of sensor 'name' with value 'state'
-func (s *Sensors) UpdateSensor(name string, state string) {
-	stringSensor := s.getStringSensor(name)
-	if stringSensor != nil {
-		s.setStateString(name, state)
-	} else {
-		floatSensor := s.getFloatSensor(name)
-		if floatSensor != nil {
-			float, err := strconv.ParseFloat(state, 64)
-			if err == nil {
-				s.setStateFloat(name, float)
-			}
-		}
-	}
-}
-
 // PublishSensors will write out the sensors to 'out'
-func (s *Sensors) PublishSensors(out *state.Instance) {
-
-	for name, value := range s.sstate {
-		out.SetStringState("publish:"+name, value)
+func (s *Sensors) PublishSensors(states *state.Domain) {
+	for _, sensor := range s.ssensors {
+		state := states.GetStringState(sensor.domain, sensor.name, sensor.defaultState)
+		states.SetStringState("hass", sensor.name, state)
 	}
-	for name, value := range s.fstate {
-		out.SetFloatState("publish:"+name, value)
+	for _, sensor := range s.fsensors {
+		state := states.GetFloatState(sensor.domain, sensor.name, sensor.defaultState)
+		states.SetFloatState("hass", sensor.name, state)
 	}
 }
