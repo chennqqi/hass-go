@@ -19,11 +19,10 @@ func New() (*IM, error) {
 	im.viper = viper.New()
 
 	// Viper command-line package
-	im.viper.SetConfigName("hass-go-slack")        // name of config file (without extension)
-	im.viper.AddConfigPath("$HOME/.hass-go-slack") // call multiple times to add many search paths
-	im.viper.AddConfigPath(".")                    // optionally look for config in the working directory
-	err := im.viper.ReadInConfig()                 // Find and read the config file
-	if err != nil {                                // Handle errors reading the config file
+	im.viper.SetConfigName("slack")   // name of config file (without extension)
+	im.viper.AddConfigPath("config/") // optionally look for config in the working directory
+	err := im.viper.ReadInConfig()    // Find and read the config file
+	if err != nil {                   // Handle errors reading the config file
 		return nil, err
 	}
 

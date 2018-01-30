@@ -1,8 +1,12 @@
 package calendar
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/jurgen-kluft/go-icloud-calendar"
 	"github.com/jurgen-kluft/hass-go/dynamic"
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
@@ -11,7 +15,7 @@ import (
 type Calendar struct {
 	viper  *viper.Viper
 	events map[string]cevent
-	//cals  []*icalendar.Calendar
+	cals   []*icalendar.Calendar
 }
 
 type cevent struct {
@@ -48,37 +52,45 @@ func New() (*Calendar, error) {
 		for _, dv := range de.Get("values").ArrayIter() {
 			e.values = append(e.values, dv.AsString())
 		}
-		c.events[e.name] = e
+		ekey := e.domain + ":" + e.name
+		c.events[ekey] = e
 	}
-
 	return c, nil
 }
 
-func (c *Calendar) updateEvents(states *state.Domain) error {
+func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
+	for _, cal := range c.cals {
+		eventsForDay := cal.GetEventsByDate(when)
+		for _, e := range eventsForDay {
+			var domain string
+			var dname string
+			var dstate string
+			title := strings.Replace(e.Summary, ":", " : ", 1)
+			title = strings.Replace(title, "=", " = ", 1)
+			fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
+			//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
 
-	// for _, cal := range c.cals {
-	// 	eventsForDay := cal.GetEventsByDate(when)
-	//
-	// 	for _, e := range eventsForDay {
-	//	   var domain string
-	//	   var dname string
-	//	   var dstate string
-	//	   title := strings.Replace(e.Title, ":", " : ", 1)
-	//	   title = strings.Replace(title, "=", " = ", 1)
-	//	   fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
-	//	   //fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
-	//
-	//	   states.SetStringState(domain, dname, )
-	//
-	// 	}
-	// }
+			ekey := domain + ":" + dname
+			ce, exists := c.events[ekey]
+			if exists {
+				if ce.typeof == "string" {
+					states.SetStringState(domain, dname, dstate)
+				} else if ce.typeof == "float" {
+					fstate, err := strconv.ParseFloat(dstate, 64)
+					if err == nil {
+						states.SetFloatState(domain, dname, fstate)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }
 
 func (c *Calendar) load() (err error) {
-	//for _, cal := range c.cals {
-	//	err = cal.Load()
-	//}
+	for _, cal := range c.cals {
+		err = cal.Load()
+	}
 	return err
 }
 
@@ -110,14 +122,6 @@ func weekOrWeekEndStartEnd(now time.Time) (weekend bool, start, end time.Time) {
 	return weekend, start, end
 }
 
-//type CEvent struct {
-//	UUID        string
-//	Title       string
-//	Description string
-//	Start       time.Time
-//	End         time.Time
-//}
-
 // Process will update 'events' from the calendar
 func (c *Calendar) Process(states *state.Domain) error {
 	now := states.GetTimeState("time", "now", time.Now())
@@ -127,8 +131,21 @@ func (c *Calendar) Process(states *state.Domain) error {
 	if err != nil {
 		return err
 	}
+
+	// Default all states before updating them
+	for _, eevent := range c.events {
+		if eevent.typeof == "string" {
+			states.SetStringState(eevent.domain, eevent.name, eevent.state)
+		} else if eevent.typeof == "float" {
+			fstate, err := strconv.ParseFloat(eevent.state, 64)
+			if err == nil {
+				states.SetFloatState(eevent.domain, eevent.name, fstate)
+			}
+		}
+	}
+
 	// Update events
-	err = c.updateEvents(states)
+	err = c.updateEvents(now, states)
 	if err != nil {
 		return err
 	}

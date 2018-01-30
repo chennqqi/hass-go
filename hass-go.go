@@ -39,29 +39,32 @@ import (
 //   - Alarms
 // - Sleep
 
-func HandleWeatherReport(report []weather.Report) {
+const (
+	daySeconds = 60.0 * 60.0 * 24.0
+)
 
-	// Get hourly report, cut off the head of anything that is before 'from'
-	// Trim the tail of anything that is beyond 'until'
+func hoursLater(date time.Time, h float64) time.Time {
+	return time.Unix(date.Unix()+int64(h*float64(daySeconds)/24.0), 0)
+}
 
-	// Report is like this:
-	//   today            : Rain = 50%, Temperature = min - max
-	//   air quality      : 50-100, Moderate
-	//   sunrise   ( 6- 8): Fog, Soft breeze, 10 Celcius (Cool)
-	//   morning   ( 8-10): Light Drizzle, Soft breeze, 8 to 13 Celcius (Cool)
-	//   morning   (10-12):
-	//   noon      (12-14):
-	//   afternoon (14-16):
-	//   afternoon (16-18):
-	//   evening   (18-20):
-	//
+func buildWeatherReport(states *state.Domain) {
+	report := "Weather Report"
 
+	// Detect rain between
+	//  -  8:30 - 9:30
+	//  - 12:00 - 13:00
+	//  - 18:00 - 20:00
+
+	// Temperature morning - noon - evening
+
+	// Weather report to
+	states.SetStringState("slack", "weather", report)
 }
 
 func main() {
 
 	// TODO: implement the main hass-go function
-	time.LoadLocation("Asia/Shanghai")
+	//time.LoadLocation("Asia/Shanghai")
 	now := time.Now()
 
 	// Create:
@@ -82,9 +85,7 @@ func main() {
 	}
 
 	suncalcInstance.Process(states)
-	weatherReport := weatherInstance.Process(now)
-	HandleWeatherReport(weatherReport)
-
+	weatherInstance.Process(states)
 	lightingInstance.Process(states)
 	sensorsInstance.PublishSensors(states)
 

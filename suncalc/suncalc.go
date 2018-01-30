@@ -42,21 +42,21 @@ var acos = math.Acos
 
 // date/time constants and conversions
 const (
-	daySeconds = 60.0 * 60.0 * 24.0
-	j1970      = 2440588
-	j2000      = 2451545
+	daySeconds = float64(60.0 * 60.0 * 24.0)
+	j1970      = float64(2440588)
+	j2000      = float64(2451545)
 )
 
 func toJulian(t time.Time) float64 {
-	return float64(t.Unix())/daySeconds - 0.5 + float64(j1970)
+	return (float64(t.Unix()) / daySeconds) - 0.5 + j1970
 }
 
 func fromJulian(j float64) time.Time {
-	return time.Unix(int64((j+0.5-float64(j1970))*daySeconds), 0)
+	return time.Unix(int64((j+0.5-j1970)*daySeconds), 0)
 }
 
 func toDays(t time.Time) float64 {
-	return toJulian(t) - float64(j2000)
+	return toJulian(t) - j2000
 }
 
 // general calculations for position
@@ -184,6 +184,7 @@ func (s *Instance) getMoments(date time.Time, lat float64, lng float64) (result 
 	dec := declination(L, 0)
 
 	Jnoon := solarTransitJ(ds, M, L)
+	fmt.Printf("Suncalc, Noon %v\n", fromJulian(Jnoon))
 
 	mtimes := map[string]time.Time{}
 	mtimes["today.begin"] = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
@@ -455,17 +456,18 @@ func New() (*Instance, error) {
 }
 
 func (s *Instance) Process(states *state.Domain) {
+	now := states.GetTimeState("time", "now", time.Now())
+	now = time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.Local)
+	fmt.Printf("Suncalc, now = %v\n", now)
+
 	lat := states.GetFloatState("geo", "latitude", s.latitude)
 	lng := states.GetFloatState("geo", "longitude", s.longitude)
-	moments := s.getMoments(time.Now(), lat, lng)
+	fmt.Printf("SunCalc: lat = %f, lng = %f\n", lat, lng)
+	moments := s.getMoments(now, lat, lng)
 	for _, m := range moments {
-		//	title string
-		//	descr string
-		//	start time.Time
-		//	end   time.Time
 		states.SetTimeState("sun", m.title+".begin", m.start)
 		states.SetTimeState("sun", m.title+".end", m.end)
 	}
-	_, moonPhase, _ := getMoonIllumination(time.Now())
+	_, moonPhase, _ := getMoonIllumination(now)
 	states.SetFloatState("sun", "moon.phase", moonPhase)
 }

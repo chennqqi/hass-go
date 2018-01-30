@@ -10,6 +10,7 @@ import (
 type sensorStateAsString struct {
 	domain         string
 	name           string
+	descr          string
 	typeof         string
 	unit           string
 	update         bool
@@ -19,6 +20,7 @@ type sensorStateAsString struct {
 type sensorStateAsFloat struct {
 	domain       string
 	name         string
+	descr        string
 	typeof       string
 	unit         string
 	update       bool
@@ -60,6 +62,7 @@ func New() (*Sensors, error) {
 			o := &sensorStateAsString{}
 			o.domain = e.Get("domain").AsString()
 			o.name = e.Get("name").AsString()
+			o.descr = e.Get("descr").AsString()
 			o.typeof = typeof
 			o.unit = e.Get("unit").AsString()
 			o.update = true
@@ -76,6 +79,7 @@ func New() (*Sensors, error) {
 			o := &sensorStateAsFloat{}
 			o.domain = e.Get("domain").AsString()
 			o.name = e.Get("name").AsString()
+			o.descr = e.Get("descr").AsString()
 			o.typeof = typeof
 			o.unit = e.Get("unit").AsString()
 			o.update = true
@@ -111,9 +115,19 @@ func (s *Sensors) PublishSensors(states *state.Domain) {
 	for _, sensor := range s.ssensors {
 		state := states.GetStringState(sensor.domain, sensor.name, sensor.defaultState)
 		states.SetStringState("hass", sensor.name, state)
+
+		states.SetStringState("sensor", sensor.name+".typeof", sensor.typeof)
+		states.SetStringState("sensor", sensor.name+".value", state)
+		states.SetStringState("sensor", sensor.name+".descr", sensor.descr)
+		states.SetStringState("sensor", sensor.name+".unit", sensor.unit)
 	}
 	for _, sensor := range s.fsensors {
 		state := states.GetFloatState(sensor.domain, sensor.name, sensor.defaultState)
 		states.SetFloatState("hass", sensor.name, state)
+
+		states.SetStringState("sensor", sensor.name+".typeof", sensor.typeof)
+		states.SetFloatState("sensor", sensor.name+".value", state)
+		states.SetStringState("sensor", sensor.name+".descr", sensor.descr)
+		states.SetStringState("sensor", sensor.name+".unit", sensor.unit)
 	}
 }
