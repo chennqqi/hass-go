@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/adlio/darksky"
-	"github.com/jurgen-kluft/hass-go/dynamic"
+	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
 
@@ -14,10 +14,12 @@ func converFToC(fahrenheit float64) float64 {
 }
 
 type Client struct {
-	viper    *viper.Viper
-	location *time.Location
-	darksky  *darksky.Client
-	darkargs map[string]string
+	viper     *viper.Viper
+	location  *time.Location
+	darksky   *darksky.Client
+	latitude  float64
+	longitude float64
+	darkargs  map[string]string
 }
 
 func New() (*Client, error) {
@@ -40,25 +42,19 @@ func New() (*Client, error) {
 	return c, nil
 }
 
-func (c *Client) DetermineRain(d darksky.DataPoint) {
+func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) {
 
-	pi := d.PrecipIntensity
-	rain := dynamic.Dynamic{Item: c.viper.Get("rain")}
-	for _, e := range rain.ArrayIter() {
-		min := e.Get("intensity_min").AsFloat64()
-		max := e.Get("intensity_max").AsFloat64()
-		if pi >= min && pi < max {
-			fmt.Printf("Rain: %s\n", e.Get("name").AsString())
+	for i, dp := range hourly.Data {
+		hfrom := time.Unix(dp.Time.Unix(), 0)
+		huntil := hoursLater(hfrom, 1.0)
+		if hfrom.After(from) && huntil.Before(until) {
+			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:from", i), hfrom)
+			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:until", i), huntil)
+			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:rain", i), dp.PrecipProbability)
+			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:clouds", i), dp.CloudCover)
+			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:temperature", i), dp.ApparentTemperature)
 		}
 	}
-}
-
-type Report struct {
-	From        time.Time
-	Until       time.Time
-	Rain        float64
-	Clouds      float64
-	Temperature float64
 }
 
 const (
@@ -69,20 +65,23 @@ func hoursLater(date time.Time, h float64) time.Time {
 	return time.Unix(date.Unix()+int64(h*float64(daySeconds)/24.0), 0)
 }
 
-func (c *Client) Process(now time.Time) []Report {
-	loc := dynamic.Dynamic{Item: c.viper.Get("location")}
-	forecast, err := c.darksky.GetForecast(loc.Get("latitude").AsString(), loc.Get("longitude").AsString(), c.darkargs)
-	report := []Report{}
+func (c *Client) Process(states *state.Domain) {
+	lat := states.GetFloatState("geo", "latitude", c.latitude)
+	lng := states.GetFloatState("geo", "longitude", c.longitude)
+	forecast, err := c.darksky.GetForecast(fmt.Sprint(lat), fmt.Sprint(lng), c.darkargs)
 	if err == nil {
+		now := states.GetTimeState("time", "now", time.Now())
+
 		from := now
 		until := hoursLater(from, 1.0)
-		w := Report{}
-		w.From = from
-		w.Until = until
-		w.Rain = forecast.Currently.PrecipProbability
-		w.Clouds = forecast.Currently.CloudCover
-		w.Temperature = forecast.Currently.ApparentTemperature
-		report = append(report, w)
+
+		states.SetTimeState("weather", "currently:from", from)
+		states.SetTimeState("weather", "currently:until", until)
+		states.SetFloatState("weather", "currently:rain", forecast.Currently.PrecipProbability)
+		states.SetFloatState("weather", "currently:clouds", forecast.Currently.CloudCover)
+		states.SetFloatState("weather", "currently:temperature", forecast.Currently.ApparentTemperature)
+
+		c.updateHourly(now, hoursLater(now, 12.0), states, forecast.Hourly)
 	}
-	return report
+	return
 }

@@ -199,7 +199,7 @@ func (l *Instance) Process(states *state.Domain) {
 	seasonName := states.GetStringState("time", "season", "winter")
 	season := l.season[seasonName]
 	clouds := weathermod{clouds: 0.0, ct_pct: 0.0, bri_pct: 0.0}
-	cloudFac := states.GetFloatState("weather", "clouds", 0.0)
+	cloudFac := states.GetFloatState("weather", "currently:clouds", 0.0)
 	for _, w := range l.weather {
 		if cloudFac <= w.clouds {
 			clouds = w

@@ -146,5 +146,5 @@ func (dyn Dynamic) Get(key string) Dynamic {
 			return Dynamic{item}
 		}
 	}
-	return Dynamic{nil}
+	return Dynamic{""}
 }
