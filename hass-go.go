@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/jurgen-kluft/hass-go/calendar"
+	"github.com/jurgen-kluft/hass-go/hass"
 	"github.com/jurgen-kluft/hass-go/lighting"
 	"github.com/jurgen-kluft/hass-go/sensors"
 	"github.com/jurgen-kluft/hass-go/state"
@@ -77,6 +78,7 @@ func main() {
 	suncalcInstance, _ := suncalc.New()
 	sensorsInstance, _ := sensors.New()
 	lightingInstance, _ := lighting.New()
+	hassInstance, _ := hass.New()
 
 	// Process
 	calerr := calendarInstance.Process(states)
@@ -88,8 +90,7 @@ func main() {
 	weatherInstance.Process(states)
 	lightingInstance.Process(states)
 	sensorsInstance.PublishSensors(states)
+	hassInstance.Process(states)
 
 	states.Print()
-
-	states.Clear("publish")
 }

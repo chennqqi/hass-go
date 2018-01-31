@@ -1,6 +1,8 @@
 package sensors
 
 import (
+	"fmt"
+
 	"github.com/jurgen-kluft/hass-go/state"
 
 	"github.com/jurgen-kluft/hass-go/dynamic"
@@ -126,7 +128,7 @@ func (s *Sensors) PublishSensors(states *state.Domain) {
 		states.SetFloatState("hass", sensor.name, state)
 
 		states.SetStringState("sensor", sensor.name+".typeof", sensor.typeof)
-		states.SetFloatState("sensor", sensor.name+".value", state)
+		states.SetStringState("sensor", sensor.name+".value", fmt.Sprintf("%f", state))
 		states.SetStringState("sensor", sensor.name+".descr", sensor.descr)
 		states.SetStringState("sensor", sensor.name+".unit", sensor.unit)
 	}

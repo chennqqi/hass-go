@@ -3,7 +3,10 @@
 Home-Assistant external go process for weather, calendar, season, sensors, light.
 
 This process will read data from:
-- DarkSky for the weather
+- DarkSky for the weather, current and hourly:
+  - Clouds
+  - Rain
+  - Temperature
 - iCloud for calendars
   - School, Free, Work
   - Season: Winter, Summer, Autumn, Spring
