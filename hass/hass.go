@@ -19,7 +19,7 @@ func postHttpSensor(url string, body string) {
 		}
 		defer resp.Body.Close()
 	} else if strings.HasPrefix(url, "print") {
-		fmt.Printf("HTTP Sensor, '%s', with message '%s'", url, body)
+		fmt.Printf("HTTP Sensor, '%s', with message '%s'\n", url, body)
 	}
 }
 
@@ -43,20 +43,14 @@ func New() (*Instance, error) {
 		return nil, err
 	}
 
-	sensors := dynamic.Dynamic{Item: s.viper.Get("sensor")}
-	for _, e := range sensors.ArrayIter() {
-		s.url = e.Get("url").AsString()
-		s.body = e.Get("body").AsString()
-		s.vars = map[string]string{}
-
-		varname := ""
-		for i, v := range e.Get("vars").ArrayIter() {
-			if i&1 == 0 {
-				varname = v.AsString()
-			} else {
-				s.vars[varname] = v.AsString()
-			}
-		}
+	sensor := dynamic.Dynamic{Item: s.viper.Get("sensor")}
+	s.url = sensor.Get("url").AsString()
+	s.body = sensor.Get("body").AsString()
+	vars := sensor.Get("vars")
+	s.vars = map[string]string{}
+	for _, v := range vars.ArrayIter() {
+		kv := strings.Split(v.AsString(), "=")
+		s.vars[kv[0]] = kv[1]
 	}
 
 	return s, nil

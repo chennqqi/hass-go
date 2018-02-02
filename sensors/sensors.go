@@ -118,8 +118,9 @@ func (s *Sensors) PublishSensors(states *state.Domain) {
 		state := states.GetStringState(sensor.domain, sensor.name, sensor.defaultState)
 		states.SetStringState("hass", sensor.name, state)
 
+		states.SetStringState("sensor", sensor.name+".name", sensor.name)
 		states.SetStringState("sensor", sensor.name+".typeof", sensor.typeof)
-		states.SetStringState("sensor", sensor.name+".value", state)
+		states.SetStringState("sensor", sensor.name+".state", state)
 		states.SetStringState("sensor", sensor.name+".descr", sensor.descr)
 		states.SetStringState("sensor", sensor.name+".unit", sensor.unit)
 	}
@@ -127,8 +128,9 @@ func (s *Sensors) PublishSensors(states *state.Domain) {
 		state := states.GetFloatState(sensor.domain, sensor.name, sensor.defaultState)
 		states.SetFloatState("hass", sensor.name, state)
 
+		states.SetStringState("sensor", sensor.name+".name", sensor.name)
 		states.SetStringState("sensor", sensor.name+".typeof", sensor.typeof)
-		states.SetStringState("sensor", sensor.name+".value", fmt.Sprintf("%f", state))
+		states.SetStringState("sensor", sensor.name+".state", fmt.Sprintf("%f", state))
 		states.SetStringState("sensor", sensor.name+".descr", sensor.descr)
 		states.SetStringState("sensor", sensor.name+".unit", sensor.unit)
 	}

@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -306,7 +307,14 @@ func (s *Instance) Print(header string) {
 		fmt.Printf("%s : %s = (float)%f\n", header, k, v)
 	}
 	for k, v := range s.Strings {
-		fmt.Printf("%s : %s = '%s'\n", header, k, v)
+		lines := strings.Split(v, "\n")
+		for ln, line := range lines {
+			if ln == 0 {
+				fmt.Printf("%s : %s = '%s'\n", header, k, line)
+			} else {
+				fmt.Printf("     %s\n", line)
+			}
+		}
 	}
 	for k, v := range s.Times {
 		fmt.Printf("%s : %s = %v\n", header, k, v)

@@ -50,25 +50,30 @@ func hoursLater(date time.Time, h float64) time.Time {
 }
 
 func buildWeatherReport(states *state.Domain) {
-	report := "Weather Report"
+	title := "Weather Report"
 
 	// Detect rain between
 	//  -  8:30 - 9:30
 	//  - 12:00 - 13:00
 	//  - 18:00 - 20:00
 	weather := states.Get("weather")
-	report := []string{}
-	i := 0
+
+	report := title + "\n"
+	fmt.Print(report)
+
+	i := 1
 	for true {
 		key := fmt.Sprintf("hourly[%d]:", i)
-		if weather.HasStringState(key + "from") {
-			hfrom := weather.GetStringState(key+"from", "")
-			huntil := weather.GetStringState(key+"until", "")
-			precipProbability := weather.GetFloatState(key+"rain", "")
-			cloudCover := weather.GetFloatState(key+"clouds", "")
-			apparentTemperature := weather.GetFloatState(key+"temperature", "")
-
-			report = append(report, fmt.Sprintf("Rain: %s, Temp: %s, Clouds: %s (%d:%d - %d:%d)"))
+		if weather.HasTimeState(key + "from") {
+			hfrom := weather.GetTimeState(key+"from", time.Now())
+			huntil := weather.GetTimeState(key+"until", time.Now())
+			srain := weather.GetStringState(key+"rain", "")
+			scloud := weather.GetStringState(key+"clouds", "")
+			stemp := weather.GetStringState(key+"temperature", "")
+			temp := weather.GetFloatState(key+"temperature", 0.0)
+			line := fmt.Sprintf("%s, %s(%d), %s (%02d:%02d - %02d:%02d)\n", srain, stemp, int32(temp+0.5), scloud, hfrom.Hour(), hfrom.Minute(), huntil.Hour(), huntil.Minute())
+			fmt.Print(line)
+			report += line
 		} else {
 			break
 		}
@@ -110,6 +115,8 @@ func main() {
 	lightingInstance.Process(states)
 	sensorsInstance.PublishSensors(states)
 	hassInstance.Process(states)
+
+	buildWeatherReport(states)
 
 	states.Print()
 }

@@ -2,60 +2,41 @@ package calendar
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/jurgen-kluft/go-icloud-calendar"
-	"github.com/jurgen-kluft/hass-go/dynamic"
 	"github.com/jurgen-kluft/hass-go/state"
-	"github.com/spf13/viper"
 )
 
 type Calendar struct {
-	viper  *viper.Viper
+	ccal   *ccalendar
 	events map[string]cevent
 	cals   []*icalendar.Calendar
 }
 
-type cevent struct {
-	calendar string
-	domain   string
-	name     string
-	state    string
-	typeof   string
-	values   []string
+func (c *Calendar) readConfig() (*ccalendar, error) {
+	jsonBytes, err := ioutil.ReadFile("config/calendar.json")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read calendar config ( %s )", err)
+	}
+	ccal, err := unmarshalccalendar(jsonBytes)
+	return ccal, err
 }
 
 func New() (*Calendar, error) {
+	var err error
+
 	c := &Calendar{}
-	c.viper = viper.New()
 	c.events = map[string]cevent{}
-
-	// Viper command-line package
-	c.viper.SetConfigName("calendar") // name of config file (without extension)
-	c.viper.AddConfigPath("config/")  // optionally look for config in the working directory
-	err := c.viper.ReadInConfig()     // Find and read the config file
-	if err != nil {                   // Handle errors reading the config file
-		return nil, err
+	c.ccal, err = c.readConfig()
+	for _, cal := range c.ccal.event {
+		c.events[cal.name] = cal
 	}
 
-	devents := dynamic.Dynamic{Item: c.viper.Get("events")}
-	for _, de := range devents.ArrayIter() {
-		e := cevent{}
-		e.calendar = de.Get("calendar").AsString()
-		e.domain = de.Get("domain").AsString()
-		e.name = de.Get("name").AsString()
-		e.state = de.Get("state").AsString()
-		e.typeof = de.Get("typeof").AsString()
-		e.values = []string{}
-		for _, dv := range de.Get("values").ArrayIter() {
-			e.values = append(e.values, dv.AsString())
-		}
-		ekey := e.domain + ":" + e.name
-		c.events[ekey] = e
-	}
-	return c, nil
+	return c, err
 }
 
 func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {

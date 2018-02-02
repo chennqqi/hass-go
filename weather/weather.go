@@ -119,7 +119,7 @@ func New() (*Client, error) {
 
 func (c *Client) getCloudsDescription(clouds float64) string {
 	for _, cloud := range c.clouds {
-		if clouds > cloud.min && clouds <= cloud.max {
+		if clouds >= cloud.min && clouds <= cloud.max {
 			return cloud.name
 		}
 	}
@@ -128,7 +128,7 @@ func (c *Client) getCloudsDescription(clouds float64) string {
 
 func (c *Client) getRainDescription(rain float64) string {
 	for _, r := range c.rains {
-		if r.intensity_min < rain && rain <= r.intensity_max {
+		if r.intensity_min <= rain && rain <= r.intensity_max {
 			return r.name
 		}
 	}
@@ -137,7 +137,7 @@ func (c *Client) getRainDescription(rain float64) string {
 
 func (c *Client) getTemperatureDescription(temperature float64) string {
 	for _, t := range c.temperatures {
-		if t.min < temperature && temperature < t.max {
+		if t.min <= temperature && temperature < t.max {
 			return t.description
 		}
 	}

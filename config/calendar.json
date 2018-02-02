@@ -1,0 +1,98 @@
+{
+  "calendars": [
+    {
+      "name": "Home",
+      "url": "https://p15-calendarws.icloud.com/ca/subscribe/1/wOCHp_4FkokEaZ_BGHLi0vk5c43gO3ZTbwG7b6CKvQfKEJm8RU71ujaoADm5UgWW"
+    }
+  ],
+  "event": [
+    {
+      "calendar": "Location",
+      "domain": "geo",
+      "name": "latitude",
+      "state": "31.2304",
+      "typeof": "float",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "Location",
+      "domain": "geo",
+      "name": "longitude",
+      "state": "121.4737",
+      "typeof": "float",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "Home",
+      "domain": "sensor",
+      "name": "jennifer",
+      "state": "free",
+      "typeof": "string",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "Home",
+      "domain": "sensor",
+      "name": "sophia",
+      "state": "free",
+      "typeof": "string",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "Home",
+      "domain": "sensor",
+      "name": "parents",
+      "state": "free",
+      "typeof": "string",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "Home",
+      "domain": "sensor",
+      "name": "alarm",
+      "state": "off",
+      "typeof": "string",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "Season",
+      "domain": "sensor",
+      "name": "season",
+      "state": "winter",
+      "typeof": "string",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    },
+    {
+      "calendar": "TimeOfDay",
+      "domain": "sensor",
+      "name": "timeofday",
+      "state": "morning",
+      "typeof": "string",
+      "values": [
+        "$(NAME)",
+        "$(STATE)"
+      ]
+    }
+  ]
+}
