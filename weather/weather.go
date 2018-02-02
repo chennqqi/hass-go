@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/adlio/darksky"
+	"github.com/jurgen-kluft/hass-go/dynamic"
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
 )
@@ -13,13 +14,44 @@ func converFToC(fahrenheit float64) float64 {
 	return ((fahrenheit - 32.0) * 5.0 / 9.0)
 }
 
+type cloud struct {
+	name        string
+	description string
+	min         float64
+	max         float64
+}
+
+type rain struct {
+	name          string
+	unit          string
+	intensity_min float64
+	intensity_max float64
+}
+
+type wind struct {
+	unit        string
+	speed       float64
+	description []string
+}
+
+type temperature struct {
+	unit        string
+	min         float64
+	max         float64
+	description string
+}
+
 type Client struct {
-	viper     *viper.Viper
-	location  *time.Location
-	darksky   *darksky.Client
-	latitude  float64
-	longitude float64
-	darkargs  map[string]string
+	viper        *viper.Viper
+	location     *time.Location
+	darksky      *darksky.Client
+	latitude     float64
+	longitude    float64
+	darkargs     map[string]string
+	clouds       []cloud
+	rains        []rain
+	winds        []wind
+	temperatures []temperature
 }
 
 func New() (*Client, error) {
@@ -39,7 +71,89 @@ func New() (*Client, error) {
 	c.darkargs = map[string]string{}
 	c.darkargs["units"] = "si"
 
+	clouds := dynamic.Dynamic{Item: c.viper.Get("cloud")}
+	for _, e := range clouds.ArrayIter() {
+		o := cloud{}
+		o.name = e.Get("name").AsString()
+		o.description = e.Get("description").AsString()
+		o.min = e.Get("min").AsFloat64()
+		o.max = e.Get("max").AsFloat64()
+		c.clouds = append(c.clouds, o)
+	}
+
+	rains := dynamic.Dynamic{Item: c.viper.Get("rain")}
+	for _, e := range rains.ArrayIter() {
+		o := rain{}
+		o.name = e.Get("name").AsString()
+		o.unit = e.Get("unit").AsString()
+		o.intensity_min = e.Get("intensity_min").AsFloat64()
+		o.intensity_max = e.Get("intensity_max").AsFloat64()
+		c.rains = append(c.rains, o)
+	}
+
+	winds := dynamic.Dynamic{Item: c.viper.Get("wind")}
+	for _, e := range winds.ArrayIter() {
+		o := wind{}
+		o.unit = e.Get("unit").AsString()
+		o.speed = e.Get("speed").AsFloat64()
+		o.description = []string{}
+		descr := e.Get("description").ArrayIter()
+		for _, e := range descr {
+			o.description = append(o.description, e.AsString())
+		}
+		c.winds = append(c.winds, o)
+	}
+
+	temperatures := dynamic.Dynamic{Item: c.viper.Get("temperature")}
+	for _, e := range temperatures.ArrayIter() {
+		o := temperature{}
+		o.unit = e.Get("unit").AsString()
+		o.min = e.Get("min").AsFloat64()
+		o.max = e.Get("max").AsFloat64()
+		o.description = e.Get("description").AsString()
+		c.temperatures = append(c.temperatures, o)
+	}
+
 	return c, nil
+}
+
+func (c *Client) getCloudsDescription(clouds float64) string {
+	for _, cloud := range c.clouds {
+		if clouds > cloud.min && clouds <= cloud.max {
+			return cloud.name
+		}
+	}
+	return ""
+}
+
+func (c *Client) getRainDescription(rain float64) string {
+	for _, r := range c.rains {
+		if r.intensity_min < rain && rain <= r.intensity_max {
+			return r.name
+		}
+	}
+	return ""
+}
+
+func (c *Client) getTemperatureDescription(temperature float64) string {
+	for _, t := range c.temperatures {
+		if t.min < temperature && temperature < t.max {
+			return t.description
+		}
+	}
+	return ""
+}
+
+func (c *Client) getWindDescription(wind float64) string {
+	for _, w := range c.winds {
+		if wind < w.speed {
+			if len(w.description) > 0 {
+				return w.description[0]
+			}
+			break
+		}
+	}
+	return ""
 }
 
 func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) {
@@ -50,9 +164,16 @@ func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Dom
 		if hfrom.After(from) && huntil.Before(until) {
 			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:from", i), hfrom)
 			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:until", i), huntil)
+
 			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:rain", i), dp.PrecipProbability)
 			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:clouds", i), dp.CloudCover)
 			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:temperature", i), dp.ApparentTemperature)
+			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:wind", i), dp.WindSpeed)
+
+			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:rain", i), c.getRainDescription(dp.PrecipProbability))
+			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:clouds", i), c.getCloudsDescription(dp.CloudCover))
+			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:temperature", i), c.getTemperatureDescription(dp.ApparentTemperature))
+			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:wind", i), c.getWindDescription(dp.WindSpeed))
 		}
 	}
 }
@@ -75,11 +196,14 @@ func (c *Client) Process(states *state.Domain) {
 		from := now
 		until := hoursLater(from, 1.0)
 
-		states.SetTimeState("weather", "currently:from", from)
-		states.SetTimeState("weather", "currently:until", until)
-		states.SetFloatState("weather", "currently:rain", forecast.Currently.PrecipProbability)
-		states.SetFloatState("weather", "currently:clouds", forecast.Currently.CloudCover)
-		states.SetFloatState("weather", "currently:temperature", forecast.Currently.ApparentTemperature)
+		weather := states.Get("weather")
+		weather.Clear()
+
+		weather.SetTimeState("currently:from", from)
+		weather.SetTimeState("currently:until", until)
+		weather.SetFloatState("currently:rain", forecast.Currently.PrecipProbability)
+		weather.SetFloatState("currently:clouds", forecast.Currently.CloudCover)
+		weather.SetFloatState("currently:temperature", forecast.Currently.ApparentTemperature)
 
 		c.updateHourly(now, hoursLater(now, 12.0), states, forecast.Hourly)
 	}

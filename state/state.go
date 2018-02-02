@@ -49,10 +49,7 @@ func (d *Domain) Clear(domain string) *Instance {
 	if !exists {
 		s = d.Add(domain)
 	} else {
-		s.Bools = map[string]bool{}
-		s.Strings = map[string]string{}
-		s.Floats = map[string]float64{}
-		s.Times = map[string]time.Time{}
+		s.Clear()
 	}
 	return s
 }
@@ -68,6 +65,13 @@ func (s *Instance) Merge(from *Instance) {
 	for k, v := range from.Times {
 		s.Times[k] = v
 	}
+}
+
+func (s *Instance) Clear() {
+	s.Bools = map[string]bool{}
+	s.Strings = map[string]string{}
+	s.Floats = map[string]float64{}
+	s.Times = map[string]time.Time{}
 }
 
 func (s *Instance) HasBoolState(name string) bool {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jurgen-kluft/hass-go/calendar"
@@ -55,6 +56,24 @@ func buildWeatherReport(states *state.Domain) {
 	//  -  8:30 - 9:30
 	//  - 12:00 - 13:00
 	//  - 18:00 - 20:00
+	weather := states.Get("weather")
+	report := []string{}
+	i := 0
+	for true {
+		key := fmt.Sprintf("hourly[%d]:", i)
+		if weather.HasStringState(key + "from") {
+			hfrom := weather.GetStringState(key+"from", "")
+			huntil := weather.GetStringState(key+"until", "")
+			precipProbability := weather.GetFloatState(key+"rain", "")
+			cloudCover := weather.GetFloatState(key+"clouds", "")
+			apparentTemperature := weather.GetFloatState(key+"temperature", "")
+
+			report = append(report, fmt.Sprintf("Rain: %s, Temp: %s, Clouds: %s (%d:%d - %d:%d)"))
+		} else {
+			break
+		}
+		i++
+	}
 
 	// Temperature morning - noon - evening
 
