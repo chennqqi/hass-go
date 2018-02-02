@@ -59,7 +59,8 @@ func buildWeatherReport(states *state.Domain) {
 	weather := states.Get("weather")
 
 	report := title + "\n"
-	fmt.Print(report)
+	report += "Change of rain is " + weather.GetStringState("currently:rain", "") + "\n"
+	//fmt.Print(report)
 
 	i := 1
 	for true {
@@ -72,7 +73,7 @@ func buildWeatherReport(states *state.Domain) {
 			stemp := weather.GetStringState(key+"temperature", "")
 			temp := weather.GetFloatState(key+"temperature", 0.0)
 			line := fmt.Sprintf("%s, %s(%d), %s (%02d:%02d - %02d:%02d)\n", srain, stemp, int32(temp+0.5), scloud, hfrom.Hour(), hfrom.Minute(), huntil.Hour(), huntil.Minute())
-			fmt.Print(line)
+			//fmt.Print(line)
 			report += line
 		} else {
 			break

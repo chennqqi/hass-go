@@ -33,7 +33,7 @@
       "domain": "sensor",
       "name": "jennifer",
       "state": "free",
-      "typeof": "string",
+      "typeof": "school",
       "values": [
         "$(NAME)",
         "$(STATE)"
@@ -44,7 +44,7 @@
       "domain": "sensor",
       "name": "sophia",
       "state": "free",
-      "typeof": "string",
+      "typeof": "school",
       "values": [
         "$(NAME)",
         "$(STATE)"
@@ -55,7 +55,7 @@
       "domain": "sensor",
       "name": "parents",
       "state": "free",
-      "typeof": "string",
+      "typeof": "work",
       "values": [
         "$(NAME)",
         "$(STATE)"

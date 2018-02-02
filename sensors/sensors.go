@@ -60,7 +60,7 @@ func New() (*Sensors, error) {
 	sensors := dynamic.Dynamic{Item: s.viper.Get("sensor")}
 	for _, e := range sensors.ArrayIter() {
 		typeof := e.Get("typeof").AsString()
-		if typeof == "string" {
+		if typeof == "string" || typeof == "school" || typeof == "work" {
 			o := &sensorStateAsString{}
 			o.domain = e.Get("domain").AsString()
 			o.name = e.Get("name").AsString()

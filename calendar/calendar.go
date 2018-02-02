@@ -54,7 +54,7 @@ func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
 			ekey := domain + ":" + dname
 			ce, exists := c.events[ekey]
 			if exists {
-				if ce.typeof == "string" {
+				if ce.typeof == "string" || ce.typeof == "school" || ce.typeof == "work" {
 					states.SetStringState(domain, dname, dstate)
 				} else if ce.typeof == "float" {
 					fstate, err := strconv.ParseFloat(dstate, 64)
@@ -113,10 +113,19 @@ func (c *Calendar) Process(states *state.Domain) error {
 		return err
 	}
 
+	// Other general states
+	weekend, varStart, varEnd := weekOrWeekEndStartEnd(now)
+
 	// Default all states before updating them
 	for _, eevent := range c.events {
 		if eevent.typeof == "string" {
 			states.SetStringState(eevent.domain, eevent.name, eevent.state)
+		} else if eevent.typeof == "school" || eevent.typeof == "work" {
+			if weekend {
+				states.SetStringState(eevent.domain, eevent.name, eevent.state)
+			} else {
+				states.SetStringState(eevent.domain, eevent.name, eevent.typeof)
+			}
 		} else if eevent.typeof == "float" {
 			fstate, err := strconv.ParseFloat(eevent.state, 64)
 			if err == nil {
@@ -130,9 +139,6 @@ func (c *Calendar) Process(states *state.Domain) error {
 	if err != nil {
 		return err
 	}
-
-	// Other general states
-	weekend, varStart, varEnd := weekOrWeekEndStartEnd(now)
 
 	states.SetBoolState("calendar", "weekend", weekend)
 	states.SetBoolState("calendar", "weekday", !weekend)

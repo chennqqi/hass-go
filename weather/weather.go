@@ -161,7 +161,7 @@ func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Dom
 	for i, dp := range hourly.Data {
 		hfrom := time.Unix(dp.Time.Unix(), 0)
 		huntil := hoursLater(hfrom, 1.0)
-		if hfrom.After(from) && huntil.Before(until) {
+		if timeRangeInGlobalRange(from, until, hfrom, huntil) {
 			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:from", i), hfrom)
 			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:until", i), huntil)
 
@@ -178,12 +178,57 @@ func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Dom
 	}
 }
 
+func timeRangeInGlobalRange(globalFrom time.Time, globalUntil time.Time, from time.Time, until time.Time) bool {
+	gf := globalFrom.Unix()
+	gu := globalUntil.Unix()
+	f := from.Unix()
+	u := until.Unix()
+	return f >= gf && f < gu && u > gf && u <= gu
+}
+
+func chanceOfRain(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) (chanceOfRain string) {
+
+	precipProbability := 0.0
+	for _, dp := range hourly.Data {
+		hfrom := time.Unix(dp.Time.Unix(), 0)
+		huntil := hoursLater(hfrom, 1.0)
+		if timeRangeInGlobalRange(from, until, hfrom, huntil) {
+			if dp.PrecipProbability > precipProbability {
+				precipProbability = dp.PrecipProbability
+			}
+		}
+	}
+
+	// Finished the sentence:
+	// "The chance of rain is " +
+	if precipProbability < 0.1 {
+		chanceOfRain = "as likely as seeing a dinosaur alive."
+	} else if precipProbability < 0.3 {
+		chanceOfRain = "likely but probably not."
+	} else if precipProbability >= 0.3 && precipProbability < 0.5 {
+		chanceOfRain = "possible but you can risk not taking an umbrella."
+	} else if precipProbability >= 0.5 && precipProbability < 0.7 {
+		chanceOfRain = "likely and you may want to bring an umbrella."
+	} else if precipProbability >= 0.7 && precipProbability < 0.9 {
+		chanceOfRain = "definitely so have an umbrella ready."
+	} else {
+		chanceOfRain = "for sure so open your umbrella and hold it up."
+	}
+
+	return
+}
+
 const (
 	daySeconds = 60.0 * 60.0 * 24.0
 )
 
 func hoursLater(date time.Time, h float64) time.Time {
 	return time.Unix(date.Unix()+int64(h*float64(daySeconds)/24.0), 0)
+}
+
+func atHour(date time.Time, h int, m int) time.Time {
+	now := time.Date(date.Year(), date.Month(), date.Day(), h, m, 0, 0, date.Location())
+	return now
 }
 
 func (c *Client) Process(states *state.Domain) {
@@ -194,18 +239,19 @@ func (c *Client) Process(states *state.Domain) {
 		now := states.GetTimeState("time", "now", time.Now())
 
 		from := now
-		until := hoursLater(from, 1.0)
+		until := hoursLater(from, 3.0)
 
 		weather := states.Get("weather")
 		weather.Clear()
 
 		weather.SetTimeState("currently:from", from)
 		weather.SetTimeState("currently:until", until)
+		weather.SetStringState("currently:rain", chanceOfRain(from, until, states, forecast.Hourly))
 		weather.SetFloatState("currently:rain", forecast.Currently.PrecipProbability)
 		weather.SetFloatState("currently:clouds", forecast.Currently.CloudCover)
 		weather.SetFloatState("currently:temperature", forecast.Currently.ApparentTemperature)
 
-		c.updateHourly(now, hoursLater(now, 12.0), states, forecast.Hourly)
+		c.updateHourly(atHour(now, 6, 0), atHour(now, 20, 0), states, forecast.Hourly)
 	}
 	return
 }
