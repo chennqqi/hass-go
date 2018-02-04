@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/jurgen-kluft/hass-go/calendar"
 	"github.com/jurgen-kluft/hass-go/hass"
 	"github.com/jurgen-kluft/hass-go/lighting"
@@ -11,6 +9,7 @@ import (
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/jurgen-kluft/hass-go/suncalc"
 	"github.com/jurgen-kluft/hass-go/weather"
+	"time"
 )
 
 // This can be computed from sun-rise, sun-set
@@ -89,35 +88,45 @@ func buildWeatherReport(states *state.Domain) {
 
 func main() {
 
-	// TODO: implement the main hass-go function
-	//time.LoadLocation("Asia/Shanghai")
-	now := time.Now()
-
 	// Create:
 	states := state.New()
-	states.SetTimeState("time", "now", now)
 
-	// im,  := im.New()
-	calendarInstance, _ := calendar.New()
-	weatherInstance, _ := weather.New()
-	suncalcInstance, _ := suncalc.New()
-	sensorsInstance, _ := sensors.New()
-	lightingInstance, _ := lighting.New()
-	hassInstance, _ := hass.New()
+	for true {
+		now := time.Now()
+		states.SetTimeState("time", "now", now)
 
-	// Process
-	calerr := calendarInstance.Process(states)
-	if calerr != nil {
-		panic(calerr)
+		states.PrintNamed("time")
+
+		// im,  := im.New()
+		calendarInstance, _ := calendar.New()
+		weatherInstance, _ := weather.New()
+		suncalcInstance, _ := suncalc.New()
+		sensorsInstance, _ := sensors.New()
+		lightingInstance, _ := lighting.New()
+		hassInstance, _ := hass.New()
+
+		// Process
+		calerr := calendarInstance.Process(states)
+		if calerr != nil {
+			panic(calerr)
+		}
+
+		suncalcInstance.Process(states)
+		weatherInstance.Process(states)
+		lightingInstance.Process(states)
+		sensorsInstance.PublishSensors(states)
+		hassInstance.Process(states)
+
+		buildWeatherReport(states)
+
+		states.PrintNamed("hass")
+
+		wait := now.Unix() + 2.0
+		for true {
+			t := time.Now().Unix()
+			if t > wait {
+				break
+			}
+		}
 	}
-
-	suncalcInstance.Process(states)
-	weatherInstance.Process(states)
-	lightingInstance.Process(states)
-	sensorsInstance.PublishSensors(states)
-	hassInstance.Process(states)
-
-	buildWeatherReport(states)
-
-	states.Print()
 }

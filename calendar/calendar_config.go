@@ -5,33 +5,74 @@
 
 package calendar
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
-func unmarshalccalendar(data []byte) (*ccalendar, error) {
-	r := &ccalendar{}
+func unmarshalccalendar(data []byte) (*Ccalendar, error) {
+	r := &Ccalendar{}
 	err := json.Unmarshal(data, &r)
 	return r, err
 }
 
-func (r *ccalendar) marshal() ([]byte, error) {
+func (r *Ccalendar) marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-type ccalendar struct {
-	calendars []ccal   `json:"calendars"`
-	event     []cevent `json:"event"`
+type Ccalendar struct {
+	Calendars []Ccal    `json:"calendars"`
+	Event     []Cevent  `json:"event"`
+	Policy    []Cpolicy `json:"policy"`
 }
 
-type ccal struct {
-	name string `json:"name"`
-	url  string `json:"url"`
+func (c *Ccalendar) print() {
+	for _, cal := range c.Calendars {
+		cal.print()
+	}
+	for _, evn := range c.Event {
+		evn.print()
+	}
+	for _, pol := range c.Policy {
+		pol.print()
+	}
 }
 
-type cevent struct {
-	calendar string   `json:"calendar"`
-	domain   string   `json:"domain"`
-	name     string   `json:"name"`
-	state    string   `json:"state"`
-	typeof   string   `json:"typeof"`
-	values   []string `json:"values"`
+type Ccal struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+func (c Ccal) print() {
+	fmt.Printf("ccal.name = %s\n", c.Name)
+	fmt.Printf("ccal.url = %s\n", c.URL)
+}
+
+type Cevent struct {
+	Calendar string   `json:"calendar"`
+	Domain   string   `json:"domain"`
+	Name     string   `json:"name"`
+	State    string   `json:"state"`
+	Typeof   string   `json:"typeof"`
+	Values   []string `json:"values"`
+}
+
+func (c Cevent) print() {
+	fmt.Printf("cevent.calendar = %s\n", c.Calendar)
+	fmt.Printf("cevent.domain = %s\n", c.Domain)
+	fmt.Printf("cevent.name = %s\n", c.Name)
+	fmt.Printf("cevent.state = %s\n", c.State)
+	fmt.Printf("cevent.typeof = %s\n", c.Typeof)
+}
+
+type Cpolicy struct {
+	Domain string `json:"domain"`
+	Name   string `json:"name"`
+	Policy string `json:"policy"`
+}
+
+func (c Cpolicy) print() {
+	fmt.Printf("cpolicy.domain = %s\n", c.Domain)
+	fmt.Printf("cpolicy.name = %s\n", c.Name)
+	fmt.Printf("cpolicy.policy = %s\n", c.Policy)
 }

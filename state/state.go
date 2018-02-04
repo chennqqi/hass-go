@@ -298,6 +298,12 @@ func (d *Domain) Print() {
 		v.Print(k)
 	}
 }
+func (d *Domain) PrintNamed(domain string) {
+	s, exists := d.Domain[domain]
+	if exists {
+		s.Print(domain)
+	}
+}
 
 func (s *Instance) Print(header string) {
 	for k, v := range s.Bools {

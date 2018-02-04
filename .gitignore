@@ -2,7 +2,8 @@
 *.o
 *.a
 *.so
-*.TOML
+*.toml
+*.json
 *.DS_Store
 
 # Folders

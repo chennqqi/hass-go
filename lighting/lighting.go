@@ -2,6 +2,7 @@ package lighting
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/jurgen-kluft/hass-go/dynamic"
@@ -191,7 +192,8 @@ func (l *Instance) Process(states *state.Domain) {
 		if inTimeSpan(t0, t1, now) {
 			current = lt
 			currentx = computeTimeSpanX(t0, t1, now)
-			fmt.Printf("Current lighttime: %s -> %s (x: %f)\n\n", current.startMoment, current.endMoment, currentx)
+			//fmt.Printf("Current lighttime: %s -> %s (x: %f)\n\n", current.startMoment, current.endMoment, currentx)
+			states.SetStringState("lighting", "current", fmt.Sprintf("%s -> %s (x: %f)", current.startMoment, current.endMoment, currentx))
 			break
 		}
 	}
@@ -247,8 +249,8 @@ func (l *Instance) Process(states *state.Domain) {
 	for _, ltype := range l.lighttypes {
 		lct := ltype.minCT + CT*(ltype.maxCT-ltype.minCT)
 		lbri := ltype.minBRI + BRI*(ltype.maxBRI-ltype.minBRI)
-		states.SetFloatState("lighting", "lights_"+ltype.name+"_CT", lct)
-		states.SetFloatState("lighting", "lights_"+ltype.name+"_BRI", lbri)
+		states.SetFloatState("lighting", "lights_"+ltype.name+"_CT", math.Floor(lct))
+		states.SetFloatState("lighting", "lights_"+ltype.name+"_BRI", math.Floor(lbri))
 	}
 
 	states.SetFloatState("lighting", "lights_CT", CT)

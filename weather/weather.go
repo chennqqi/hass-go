@@ -52,11 +52,13 @@ type Client struct {
 	rains        []rain
 	winds        []wind
 	temperatures []temperature
+	update       time.Time
 }
 
 func New() (*Client, error) {
 	c := &Client{}
 	c.viper = viper.New()
+	c.update = time.Now()
 
 	// Viper command-line package
 	c.viper.SetConfigName("weather") // name of config file (without extension)
@@ -232,26 +234,33 @@ func atHour(date time.Time, h int, m int) time.Time {
 }
 
 func (c *Client) Process(states *state.Domain) {
-	lat := states.GetFloatState("geo", "latitude", c.latitude)
-	lng := states.GetFloatState("geo", "longitude", c.longitude)
-	forecast, err := c.darksky.GetForecast(fmt.Sprint(lat), fmt.Sprint(lng), c.darkargs)
-	if err == nil {
-		now := states.GetTimeState("time", "now", time.Now())
+	now := states.GetTimeState("time", "now", time.Now())
 
-		from := now
-		until := hoursLater(from, 3.0)
+	// Weather update every 15 minutes
+	if now.Unix() > c.update.Unix() {
+		c.update = time.Unix(now.Unix()+15*60, 0)
+		fmt.Println("WEATHER: UPDATE")
 
-		weather := states.Get("weather")
-		weather.Clear()
+		lat := states.GetFloatState("geo", "latitude", c.latitude)
+		lng := states.GetFloatState("geo", "longitude", c.longitude)
+		forecast, err := c.darksky.GetForecast(fmt.Sprint(lat), fmt.Sprint(lng), c.darkargs)
+		if err == nil {
 
-		weather.SetTimeState("currently:from", from)
-		weather.SetTimeState("currently:until", until)
-		weather.SetStringState("currently:rain", chanceOfRain(from, until, states, forecast.Hourly))
-		weather.SetFloatState("currently:rain", forecast.Currently.PrecipProbability)
-		weather.SetFloatState("currently:clouds", forecast.Currently.CloudCover)
-		weather.SetFloatState("currently:temperature", forecast.Currently.ApparentTemperature)
+			from := now
+			until := hoursLater(from, 3.0)
 
-		c.updateHourly(atHour(now, 6, 0), atHour(now, 20, 0), states, forecast.Hourly)
+			weather := states.Get("weather")
+			weather.Clear()
+
+			weather.SetTimeState("currently:from", from)
+			weather.SetTimeState("currently:until", until)
+			weather.SetStringState("currently:rain", chanceOfRain(from, until, states, forecast.Hourly))
+			weather.SetFloatState("currently:rain", forecast.Currently.PrecipProbability)
+			weather.SetFloatState("currently:clouds", forecast.Currently.CloudCover)
+			weather.SetFloatState("currently:temperature", forecast.Currently.ApparentTemperature)
+
+			c.updateHourly(atHour(now, 6, 0), atHour(now, 20, 0), states, forecast.Hourly)
+		}
 	}
 	return
 }

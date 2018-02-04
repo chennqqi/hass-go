@@ -184,7 +184,7 @@ func (s *Instance) getMoments(date time.Time, lat float64, lng float64) (result 
 	dec := declination(L, 0)
 
 	Jnoon := solarTransitJ(ds, M, L)
-	fmt.Printf("Suncalc, Noon %v\n", fromJulian(Jnoon))
+	//fmt.Printf("Suncalc, Noon %v\n", fromJulian(Jnoon))
 
 	mtimes := map[string]time.Time{}
 	mtimes["today.begin"] = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
@@ -433,7 +433,7 @@ func New() (*Instance, error) {
 	//fmt.Printf("%v\n", s.longitude)
 
 	angles := dynamic.Dynamic{Item: s.viper.Get("anglecfg")}
-	fmt.Printf("%v\n", s.viper.Get("angle"))
+	//fmt.Printf("%v\n", s.viper.Get("angle"))
 	for _, a := range angles.ArrayIter() {
 		angle := anglecfg{}
 		angle.angle = a.Get("angle").AsFloat64()
@@ -458,11 +458,11 @@ func New() (*Instance, error) {
 func (s *Instance) Process(states *state.Domain) {
 	now := states.GetTimeState("time", "now", time.Now())
 	now = time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.Local)
-	fmt.Printf("Suncalc, now = %v\n", now)
+	//fmt.Printf("Suncalc, now = %v\n", now)
 
 	lat := states.GetFloatState("geo", "latitude", s.latitude)
 	lng := states.GetFloatState("geo", "longitude", s.longitude)
-	fmt.Printf("SunCalc: lat = %f, lng = %f\n", lat, lng)
+	//fmt.Printf("SunCalc: lat = %f, lng = %f\n", lat, lng)
 	moments := s.getMoments(now, lat, lng)
 	for _, m := range moments {
 		states.SetTimeState("sun", m.title+".begin", m.start)
