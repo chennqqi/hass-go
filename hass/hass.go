@@ -11,16 +11,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-func postHttpSensor(url string, body string) {
+func postHttpSensor(url string, body string) (err error) {
 	if strings.HasPrefix(url, "http") {
-		resp, err := http.Post(url, "application/json", bytes.NewBufferString(body))
-		if err != nil {
-			panic(err)
-		}
+		var resp *http.Response
+		resp, err = http.Post(url, "application/json", bytes.NewBufferString(body))
 		defer resp.Body.Close()
 	} else if strings.HasPrefix(url, "print") {
 		fmt.Printf("HTTP Sensor, '%s', with message '%s'\n", url, body)
 	}
+	return err
 }
 
 type Instance struct {

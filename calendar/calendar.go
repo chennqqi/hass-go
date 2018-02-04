@@ -180,8 +180,9 @@ func (c *Calendar) Process(states *state.Domain) (err error) {
 	if now.Unix() >= c.update.Unix() {
 		// Download again after 15 minutes
 		c.update = time.Unix(now.Unix()+15*60, 0)
+
 		// Download calendar
-		fmt.Println("CALENDAR: LOAD")
+		// fmt.Println("CALENDAR: LOAD")
 		err := c.load()
 		if err != nil {
 			fmt.Printf("ERROR: '%s'\n", err.Error())

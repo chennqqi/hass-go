@@ -121,6 +121,7 @@ func main() {
 		buildWeatherReport(states)
 
 		states.PrintNamed("hass")
+		fmt.Println("")
 
 		wait := now.Unix() + 2.0
 		for true {
