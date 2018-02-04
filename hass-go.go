@@ -91,19 +91,20 @@ func main() {
 	// Create:
 	states := state.New()
 
+	// im,  := im.New()
+	calendarInstance, _ := calendar.New()
+	weatherInstance, _ := weather.New()
+	suncalcInstance, _ := suncalc.New()
+	sensorsInstance, _ := sensors.New()
+	lightingInstance, _ := lighting.New()
+	hassInstance, _ := hass.New()
+
 	for true {
 		now := time.Now()
 		states.SetTimeState("time", "now", now)
 
+		fmt.Println("----- UPDATE -------")
 		states.PrintNamed("time")
-
-		// im,  := im.New()
-		calendarInstance, _ := calendar.New()
-		weatherInstance, _ := weather.New()
-		suncalcInstance, _ := suncalc.New()
-		sensorsInstance, _ := sensors.New()
-		lightingInstance, _ := lighting.New()
-		hassInstance, _ := hass.New()
 
 		// Process
 		calerr := calendarInstance.Process(states)

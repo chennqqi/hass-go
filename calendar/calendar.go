@@ -37,9 +37,13 @@ func New() (*Calendar, error) {
 		fmt.Printf("ERROR: '%s'\n", err.Error())
 	}
 	//c.ccal.print()
-	for _, cal := range c.ccal.Event {
-		//fmt.Printf("CALENDAR EVENT: '%s'\n", cal.Name)
-		c.events[cal.Name] = cal
+	for _, ev := range c.ccal.Event {
+
+		c.events[strings.ToLower(ev.Domain)+":"+strings.ToLower(ev.Name)] = ev
+	}
+	for _, cal := range c.ccal.Calendars {
+		fmt.Printf("CALENDAR NAME: '%s'\n", cal.Name)
+		c.cals = append(c.cals, icalendar.NewURLCalendar(cal.URL))
 	}
 
 	c.update = time.Now()
@@ -48,7 +52,10 @@ func New() (*Calendar, error) {
 }
 
 func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
+	fmt.Printf("Update calendar events: '%d'\n", len(c.cals))
 	for _, cal := range c.cals {
+		fmt.Printf("Update calendar events: '%s'\n", cal.Name)
+
 		eventsForDay := cal.GetEventsByDate(when)
 		for _, e := range eventsForDay {
 			var domain string
@@ -58,6 +65,10 @@ func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
 			title = strings.Replace(title, "=", " = ", 1)
 			fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
 			fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
+
+			domain = strings.ToLower(domain)
+			dname = strings.ToLower(dname)
+			dstate = strings.ToLower(dstate)
 
 			ekey := domain + ":" + dname
 			ce, exists := c.events[ekey]
@@ -166,7 +177,7 @@ func (c *Calendar) Process(states *state.Domain) (err error) {
 	err = nil
 	now := states.GetTimeState("time", "now", time.Now())
 
-	if now.Unix() > c.update.Unix() {
+	if now.Unix() >= c.update.Unix() {
 		// Download again after 15 minutes
 		c.update = time.Unix(now.Unix()+15*60, 0)
 		// Download calendar
