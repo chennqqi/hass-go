@@ -11,6 +11,7 @@ import (
 	"github.com/jurgen-kluft/hass-go/shout"
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/jurgen-kluft/hass-go/suncalc"
+	"github.com/jurgen-kluft/hass-go/timeofday"
 	"github.com/jurgen-kluft/hass-go/weather"
 )
 
@@ -95,6 +96,7 @@ func main() {
 
 	shoutInstance, _ := shout.New()
 	calendarInstance, _ := calendar.New()
+	timeofdayInstance, _ := timeofday.New()
 	weatherInstance, _ := weather.New()
 	suncalcInstance, _ := suncalc.New()
 	sensorsInstance, _ := sensors.New()
@@ -106,7 +108,6 @@ func main() {
 		states.SetTimeState("time", "now", now)
 
 		fmt.Println("----- UPDATE -------")
-		states.PrintNamed("time")
 
 		// Process
 		calerr := calendarInstance.Process(states)
@@ -115,6 +116,7 @@ func main() {
 			//panic(calerr)
 		}
 
+		timeofdayInstance.Process(states)
 		suncalcInstance.Process(states)
 		weatherInstance.Process(states)
 		lightingInstance.Process(states)
@@ -125,6 +127,7 @@ func main() {
 
 		shoutInstance.PublishMessages(states)
 
+		states.PrintNamed("time")
 		states.PrintNamed("hass")
 		fmt.Println("")
 

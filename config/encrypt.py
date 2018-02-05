@@ -10,4 +10,5 @@ pyAesCrypt.encryptFile("secrets.toml",  "secrets.toml.aes", password, bufferSize
 pyAesCrypt.encryptFile("sensors.toml",  "sensors.toml.aes", password, bufferSize)
 pyAesCrypt.encryptFile("shout.toml",    "shout.toml.aes", password, bufferSize)
 pyAesCrypt.encryptFile("suncalc.toml",  "suncalc.toml.aes", password, bufferSize)
+pyAesCrypt.encryptFile("timeofday.json",  "timeofday.json.aes", password, bufferSize)
 pyAesCrypt.encryptFile("weather.toml",  "weather.toml.aes", password, bufferSize)
