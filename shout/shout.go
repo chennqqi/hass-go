@@ -2,6 +2,7 @@ package shout
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/nlopes/slack"
@@ -52,12 +53,19 @@ func (s *Instance) PublishMessages(states *state.Domain) {
 	state := states.Get("shout")
 	if len(state.Strings) > 0 {
 		for name, body := range state.Strings {
-			channel := state.GetStringState(name+"."+"channel", "general")
-			username := state.GetStringState(name+"."+"username", "bot")
-			pretext := state.GetStringState(name+"."+"pretext", "...")
-			prebody := state.GetStringState(name+"."+"prebody", "...")
-			s.postMessage(channel, username, body, pretext, prebody)
+			if strings.HasPrefix(name, "msg:") {
+				parts := strings.SplitAfter(name, ":")
+				if len(parts) == 2 && parts[0] == "msg:" {
+					name = parts[1]
+					channel := state.GetStringState(name+"."+"channel", "general")
+					username := state.GetStringState(name+"."+"username", "bot")
+					pretext := state.GetStringState(name+"."+"pretext", "...")
+					prebody := state.GetStringState(name+"."+"prebody", "...")
+					s.postMessage(channel, username, body, pretext, prebody)
+
+				}
+			}
 		}
+		state.Clear()
 	}
-	state.Clear()
 }

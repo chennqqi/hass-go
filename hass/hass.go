@@ -15,7 +15,9 @@ func postHttpSensor(url string, body string) (err error) {
 	if strings.HasPrefix(url, "http") {
 		var resp *http.Response
 		resp, err = http.Post(url, "application/json", bytes.NewBufferString(body))
-		defer resp.Body.Close()
+		if resp != nil {
+			resp.Body.Close()
+		}
 	} else if strings.HasPrefix(url, "print") {
 		fmt.Printf("HTTP Sensor, '%s', with message '%s'\n", url, body)
 	}
@@ -65,6 +67,9 @@ func (c *Instance) Process(states *state.Domain) {
 			surl = strings.Replace(surl, vv, vval, 1)
 			sbody = strings.Replace(sbody, vv, vval, 1)
 		}
-		postHttpSensor(surl, sbody)
+		err := postHttpSensor(surl, sbody)
+		if err != nil {
+			break
+		}
 	}
 }

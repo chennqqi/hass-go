@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/jurgen-kluft/hass-go/calendar"
 	"github.com/jurgen-kluft/hass-go/hass"
 	"github.com/jurgen-kluft/hass-go/lighting"
 	"github.com/jurgen-kluft/hass-go/sensors"
+	"github.com/jurgen-kluft/hass-go/shout"
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/jurgen-kluft/hass-go/suncalc"
 	"github.com/jurgen-kluft/hass-go/weather"
-	"time"
 )
 
 // This can be computed from sun-rise, sun-set
@@ -83,7 +85,7 @@ func buildWeatherReport(states *state.Domain) {
 	// Temperature morning - noon - evening
 
 	// Weather report to
-	states.SetStringState("slack", "weather", report)
+	states.SetStringState("shout", "msg:weather", report)
 }
 
 func main() {
@@ -91,7 +93,7 @@ func main() {
 	// Create:
 	states := state.New()
 
-	// im,  := im.New()
+	shoutInstance, _ := shout.New()
 	calendarInstance, _ := calendar.New()
 	weatherInstance, _ := weather.New()
 	suncalcInstance, _ := suncalc.New()
@@ -109,7 +111,8 @@ func main() {
 		// Process
 		calerr := calendarInstance.Process(states)
 		if calerr != nil {
-			panic(calerr)
+			fmt.Println("ERROR: Calendar error")
+			//panic(calerr)
 		}
 
 		suncalcInstance.Process(states)
@@ -119,6 +122,8 @@ func main() {
 		hassInstance.Process(states)
 
 		buildWeatherReport(states)
+
+		shoutInstance.PublishMessages(states)
 
 		states.PrintNamed("hass")
 		fmt.Println("")
