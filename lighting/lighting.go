@@ -249,11 +249,11 @@ func (l *Instance) Process(states *state.Domain) {
 	for _, ltype := range l.lighttypes {
 		lct := ltype.minCT + CT*(ltype.maxCT-ltype.minCT)
 		lbri := ltype.minBRI + BRI*(ltype.maxBRI-ltype.minBRI)
-		states.SetFloatState("lighting", "lights_"+ltype.name+"_CT", math.Floor(lct))
-		states.SetFloatState("lighting", "lights_"+ltype.name+"_BRI", math.Floor(lbri))
+		states.SetFloatState("lighting", "lights_"+ltype.name+"_ct", math.Floor(lct))
+		states.SetFloatState("lighting", "lights_"+ltype.name+"_bri", math.Floor(lbri))
 	}
 
-	states.SetFloatState("lighting", "lights_CT", CT)
-	states.SetFloatState("lighting", "lights_BRI", BRI)
-	states.SetStringState("lighting", "lights_DOL", current.darkorlight)
+	states.SetFloatState("lighting", "lights_ct", CT)
+	states.SetFloatState("lighting", "lights_bri", BRI)
+	states.SetStringState("lighting", "darklight", current.darkorlight)
 }
