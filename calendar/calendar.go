@@ -42,8 +42,14 @@ func New() (*Calendar, error) {
 		c.events[strings.ToLower(ev.Domain)+":"+strings.ToLower(ev.Name)] = ev
 	}
 	for _, cal := range c.ccal.Calendars {
-		fmt.Printf("CALENDAR NAME: '%s'\n", cal.Name)
-		c.cals = append(c.cals, icalendar.NewURLCalendar(cal.URL))
+		if strings.HasPrefix(cal.URL, "http") {
+			c.cals = append(c.cals, icalendar.NewURLCalendar(cal.URL))
+		} else if strings.HasPrefix(cal.URL, "file") {
+			c.cals = append(c.cals, icalendar.NewFileCalendar(cal.URL))
+		} else if strings.HasPrefix(cal.URL, "file") {
+			filepath := strings.Replace(cal.URL, "file://", "", 1)
+			fmt.Printf("ERROR: Unknown Calendar source: '%s'\n", filepath)
+		}
 	}
 
 	c.update = time.Now()
@@ -73,6 +79,13 @@ func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
 			ekey := domain + ":" + dname
 			ce, exists := c.events[ekey]
 			if exists {
+				if domain == "report" {
+					states.SetStringState(domain, dname, e.GenerateUUID())
+					states.SetStringState(domain, dname+".ID", e.GenerateUUID())
+					states.SetTimeState(domain, dname+".from", e.Start)
+					states.SetTimeState(domain, dname+".until", e.End)
+				}
+
 				if ce.Typeof == "string" {
 					states.SetStringState(domain, dname, dstate)
 				} else if ce.Typeof == "float" {
