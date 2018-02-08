@@ -38,7 +38,7 @@ func isTimeofday(now time.Time, tod Ctime) bool {
 	return t0 < t1
 }
 
-func (c *Instance) Process(states *state.Domain) {
+func (c *Instance) Process(states *state.Domain) time.Duration {
 	now := states.GetTimeState("time", "now", time.Now())
 
 	weekday := strings.ToLower(now.Weekday().String())
@@ -54,5 +54,5 @@ func (c *Instance) Process(states *state.Domain) {
 		}
 	}
 
-	return
+	return 1 * time.Second
 }

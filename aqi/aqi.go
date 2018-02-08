@@ -74,7 +74,7 @@ func getAiqTagAndDescr(aiq float64) (tag, implications, caution string) {
 }
 
 // Process will get the AQI and post it in "weather"
-func (c *Instance) Process(states *state.Domain) {
+func (c *Instance) Process(states *state.Domain) time.Duration {
 	now := states.GetTimeState("time", "now", time.Now())
 	if now.Unix() >= c.update.Unix() {
 		aqi, err := c.getResponse()
@@ -87,5 +87,5 @@ func (c *Instance) Process(states *state.Domain) {
 		}
 		c.update = now.Add(c.period)
 	}
-	return
+	return 1 * time.Second
 }

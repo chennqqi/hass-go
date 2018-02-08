@@ -174,7 +174,7 @@ func computeTimeSpanX(start, end, t time.Time) float64 {
 // States are both input and output, for example as input
 // there are Season/Weather states like 'Season':'Winter'
 // and 'Clouds':0.5
-func (l *Instance) Process(states *state.Domain) {
+func (l *Instance) Process(states *state.Domain) time.Duration {
 	// Update our internal state with 'state'
 	now := states.GetTimeState("time", "now", time.Now())
 
@@ -256,4 +256,6 @@ func (l *Instance) Process(states *state.Domain) {
 	states.SetFloatState("lighting", "lights_ct", CT)
 	states.SetFloatState("lighting", "lights_bri", BRI)
 	states.SetStringState("lighting", "darklight", current.darkorlight)
+
+	return 1 * time.Second
 }

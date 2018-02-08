@@ -17,6 +17,24 @@ import (
 	"github.com/jurgen-kluft/hass-go/weather"
 )
 
+type waiter struct {
+	wait   time.Duration
+	states *state.Domain
+}
+
+type process func(states *state.Domain) time.Duration
+
+func (w *waiter) process(wait time.Duration) {
+	if wait < w.wait {
+		w.wait = wait
+	}
+}
+
+func (w *waiter) sleep() {
+	time.Sleep(w.wait)
+	w.wait = 30 * time.Minute
+}
+
 func main() {
 
 	// Create:
@@ -33,6 +51,7 @@ func main() {
 	hassInstance, _ := hass.New()
 	reporterInstance, _ := reporter.New()
 
+	waiter := &waiter{}
 	for true {
 		now := time.Now()
 		states.SetTimeState("time", "now", now)
@@ -40,33 +59,23 @@ func main() {
 		fmt.Println("----- UPDATE -------")
 
 		// Process
-		calerr := calendarInstance.Process(states)
-		if calerr != nil {
-			fmt.Println("ERROR: Calendar error")
-			//panic(calerr)
-		}
-
-		timeofdayInstance.Process(states)
-		suncalcInstance.Process(states)
-		weatherInstance.Process(states)
-		aqiInstance.Process(states)
-		lightingInstance.Process(states)
-		sensorsInstance.PublishSensors(states)
-		hassInstance.Process(states)
-		reporterInstance.Process(states)
-
-		shoutInstance.PublishMessages(states)
+		waiter.wait = 30 * time.Minute
+		waiter.process(calendarInstance.Process(states))
+		waiter.process(calendarInstance.Process(states))
+		waiter.process(timeofdayInstance.Process(states))
+		waiter.process(suncalcInstance.Process(states))
+		waiter.process(weatherInstance.Process(states))
+		waiter.process(aqiInstance.Process(states))
+		waiter.process(lightingInstance.Process(states))
+		waiter.process(sensorsInstance.Process(states))
+		waiter.process(hassInstance.Process(states))
+		waiter.process(reporterInstance.Process(states))
+		waiter.process(shoutInstance.Process(states))
 
 		states.PrintNamed("time")
 		states.PrintNamed("hass")
 		fmt.Println("")
 
-		wait := now.Unix() + 2.0
-		for true {
-			t := time.Now().Unix()
-			if t > wait {
-				break
-			}
-		}
+		waiter.sleep()
 	}
 }

@@ -186,8 +186,8 @@ func (c *Calendar) findPolicy(domain string, name string, policy string) (bool, 
 }
 
 // Process will update 'events' from the calendar
-func (c *Calendar) Process(states *state.Domain) (err error) {
-	err = nil
+func (c *Calendar) Process(states *state.Domain) time.Duration {
+	var err error
 	now := states.GetTimeState("time", "now", time.Now())
 
 	if now.Unix() >= c.update.Unix() {
@@ -199,7 +199,7 @@ func (c *Calendar) Process(states *state.Domain) (err error) {
 		err := c.load()
 		if err != nil {
 			fmt.Printf("ERROR: '%s'\n", err.Error())
-			return err
+			return 15 * time.Minute
 		}
 	}
 
@@ -236,7 +236,7 @@ func (c *Calendar) Process(states *state.Domain) (err error) {
 	err = c.updateEvents(now, states)
 	if err != nil {
 		fmt.Printf("ERROR: '%s'\n", err.Error())
-		return err
+		return 15 * time.Minute
 	}
 
 	states.SetBoolState("calendar", "weekend", weekend)
@@ -254,5 +254,5 @@ func (c *Calendar) Process(states *state.Domain) (err error) {
 	states.SetStringState("calendar", "weekend.description", "Saturday and Sunday")
 	states.SetStringState("calendar", "weekday.description", "Monday to Friday")
 
-	return err
+	return 15 * time.Minute
 }

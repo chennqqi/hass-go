@@ -63,7 +63,7 @@ func (c *Instance) reportWeather(ID string, states *state.Domain) {
 	}
 }
 
-func (c *Instance) Process(states *state.Domain) {
+func (c *Instance) Process(states *state.Domain) time.Duration {
 
 	// In calendar these are written as:
 	//
@@ -78,4 +78,6 @@ func (c *Instance) Process(states *state.Domain) {
 			}
 		}
 	}
+
+	return 1 * time.Second
 }

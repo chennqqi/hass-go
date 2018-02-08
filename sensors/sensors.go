@@ -5,6 +5,7 @@ import (
 	"github.com/jurgen-kluft/hass-go/dynamic"
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/spf13/viper"
+	"time"
 )
 
 type sensorStateAsString struct {
@@ -53,8 +54,8 @@ func New() (*Sensors, error) {
 	return s, nil
 }
 
-// PublishSensors will write out the sensors to 'out'
-func (s *Sensors) PublishSensors(states *state.Domain) {
+// Process will write out the sensors to 'out'
+func (s *Sensors) Process(states *state.Domain) time.Duration {
 	hassState := states.Get("hass")
 	sensorState := states.Get("sensor")
 
@@ -77,4 +78,6 @@ func (s *Sensors) PublishSensors(states *state.Domain) {
 			fmt.Printf("ERROR: Sensor with name %s in domain %s doesn't exist\n", sensor.name, sensor.domain)
 		}
 	}
+
+	return 1 * time.Second
 }

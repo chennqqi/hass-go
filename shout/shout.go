@@ -3,6 +3,7 @@ package shout
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jurgen-kluft/hass-go/state"
 	"github.com/nlopes/slack"
@@ -49,7 +50,7 @@ func (s *Instance) postMessage(channel string, username string, msg string, pret
 	fmt.Printf("Message successfully sent to channel %s at %s\n", channel, timestamp)
 }
 
-func (s *Instance) PublishMessages(states *state.Domain) {
+func (s *Instance) Process(states *state.Domain) time.Duration {
 	state := states.Get("shout")
 	if len(state.Strings) > 0 {
 		for name, body := range state.Strings {
@@ -68,4 +69,6 @@ func (s *Instance) PublishMessages(states *state.Domain) {
 		}
 		state.Clear()
 	}
+
+	return 1 * time.Second
 }

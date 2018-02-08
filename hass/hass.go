@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jurgen-kluft/hass-go/dynamic"
 	"github.com/jurgen-kluft/hass-go/state"
@@ -57,7 +58,7 @@ func New() (*Instance, error) {
 	return s, nil
 }
 
-func (c *Instance) Process(states *state.Domain) {
+func (c *Instance) Process(states *state.Domain) time.Duration {
 	sensors := states.Get("hass")
 	for sn, _ := range sensors.Strings {
 		surl := c.url
@@ -72,4 +73,6 @@ func (c *Instance) Process(states *state.Domain) {
 			break
 		}
 	}
+
+	return 1 * time.Second
 }

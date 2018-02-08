@@ -234,7 +234,7 @@ func atHour(date time.Time, h int, m int) time.Time {
 	return now
 }
 
-func (c *Client) Process(states *state.Domain) {
+func (c *Client) Process(states *state.Domain) time.Duration {
 	now := states.GetTimeState("time", "now", time.Now())
 
 	// Weather update every 15 minutes
@@ -263,5 +263,5 @@ func (c *Client) Process(states *state.Domain) {
 			c.updateHourly(atHour(now, 6, 0), atHour(now, 20, 0), states, forecast.Hourly)
 		}
 	}
-	return
+	return 1 * time.Second
 }

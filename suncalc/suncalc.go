@@ -455,7 +455,7 @@ func New() (*Instance, error) {
 	return s, nil
 }
 
-func (s *Instance) Process(states *state.Domain) {
+func (s *Instance) Process(states *state.Domain) time.Duration {
 	now := states.GetTimeState("time", "now", time.Now())
 	now = time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.Local)
 	//fmt.Printf("Suncalc, now = %v\n", now)
@@ -470,4 +470,6 @@ func (s *Instance) Process(states *state.Domain) {
 	}
 	_, moonPhase, _ := getMoonIllumination(now)
 	states.SetFloatState("sun", "moon.phase", moonPhase)
+
+	return 1 * time.Second
 }
