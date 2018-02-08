@@ -160,22 +160,23 @@ func (c *Client) getWindDescription(wind float64) string {
 
 func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) {
 
-	for i, dp := range hourly.Data {
+	for _, dp := range hourly.Data {
 		hfrom := time.Unix(dp.Time.Unix(), 0)
 		huntil := hoursLater(hfrom, 1.0)
+		hour := hfrom.Hour()
 		if timeRangeInGlobalRange(from, until, hfrom, huntil) {
-			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:from", i), hfrom)
-			states.SetTimeState("weather", fmt.Sprintf("hourly[%d]:until", i), huntil)
+			states.SetTimeState("weather", fmt.Sprintf("hour[%d]:from", hour), hfrom)
+			states.SetTimeState("weather", fmt.Sprintf("hour[%d]:until", hour), huntil)
 
-			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:rain", i), dp.PrecipProbability)
-			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:clouds", i), dp.CloudCover)
-			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:temperature", i), dp.ApparentTemperature)
-			states.SetFloatState("weather", fmt.Sprintf("hourly[%d]:wind", i), dp.WindSpeed)
+			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:rain", hour), dp.PrecipProbability)
+			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:clouds", hour), dp.CloudCover)
+			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:temperature", hour), dp.ApparentTemperature)
+			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:wind", hour), dp.WindSpeed)
 
-			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:rain", i), c.getRainDescription(dp.PrecipProbability))
-			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:clouds", i), c.getCloudsDescription(dp.CloudCover))
-			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:temperature", i), c.getTemperatureDescription(dp.ApparentTemperature))
-			states.SetStringState("weather", fmt.Sprintf("hourly[%d]:wind", i), c.getWindDescription(dp.WindSpeed))
+			states.SetStringState("weather", fmt.Sprintf("hour[%d]:rain", hour), c.getRainDescription(dp.PrecipProbability))
+			states.SetStringState("weather", fmt.Sprintf("hour[%d]:clouds", hour), c.getCloudsDescription(dp.CloudCover))
+			states.SetStringState("weather", fmt.Sprintf("hour[%d]:temperature", hour), c.getTemperatureDescription(dp.ApparentTemperature))
+			states.SetStringState("weather", fmt.Sprintf("hour[%d]:wind", hour), c.getWindDescription(dp.WindSpeed))
 		}
 	}
 }
@@ -208,7 +209,7 @@ func chanceOfRain(from time.Time, until time.Time, states *state.Domain, hourly 
 	} else if precipProbability < 0.3 {
 		chanceOfRain = "likely but probably not."
 	} else if precipProbability >= 0.3 && precipProbability < 0.5 {
-		chanceOfRain = "possible but you can risk not taking an umbrella."
+		chanceOfRain = "possible but you can risk it."
 	} else if precipProbability >= 0.5 && precipProbability < 0.7 {
 		chanceOfRain = "likely and you may want to bring an umbrella."
 	} else if precipProbability >= 0.7 && precipProbability < 0.9 {
