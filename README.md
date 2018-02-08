@@ -23,13 +23,14 @@ Others are:
 - sensor.time_of_day
 
 A computation is done for the supplied location (lat, long) using weather, sun position and season to create values for the following HTTP sensors:
-- sensor.color_temperature
-- sensor.brightness
+- sensor.lights_hue_ct
+- sensor.lights_hue_bri
 
 And it will do the following:
 - Post a json message to a running home-assistant instance http://IP:Port/api/states/sensor.NAME to update HTTP sensors
 - Post messages to slack for
   - Weather report
+  - AQI (Air Quality Index)
   - Notifications (configurable), these are examples:
     - rain
     - freezing

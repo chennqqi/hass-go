@@ -23,12 +23,13 @@ type CaqiResponse struct {
 }
 
 type Data struct {
-	Idx          int64         `json:"idx"`
 	Aqi          int64         `json:"aqi"`
-	Time         Time          `json:"time"`
-	City         City          `json:"city"`
+	Idx          int64         `json:"idx"`
 	Attributions []Attribution `json:"attributions"`
+	City         City          `json:"city"`
+	Dominentpol  string        `json:"dominentpol"`
 	Iaqi         Iaqi          `json:"iaqi"`
+	Time         Time          `json:"time"`
 }
 
 type Attribution struct {
@@ -37,26 +38,36 @@ type Attribution struct {
 }
 
 type City struct {
-	Name string   `json:"name"`
-	URL  string   `json:"url"`
-	Geo  []string `json:"geo"`
+	Name string    `json:"name"`
+	URL  string    `json:"url"`
+	Geo  []float64 `json:"geo"`
 }
 
 type Iaqi struct {
-	Pm25 H `json:"pm25"`
-	O3   H `json:"o3"`
-	No2  H `json:"no2"`
-	T    H `json:"t"`
-	P    H `json:"p"`
-	H    H `json:"h"`
+	Co   Co `json:"co"`
+	D    D  `json:"d"`
+	H    D  `json:"h"`
+	No2  Co `json:"no2"`
+	O3   Co `json:"o3"`
+	P    D  `json:"p"`
+	Pm10 D  `json:"pm10"`
+	Pm25 D  `json:"pm25"`
+	So2  Co `json:"so2"`
+	T    D  `json:"t"`
+	W    D  `json:"w"`
+	Wd   D  `json:"wd"`
 }
 
-type H struct {
+type Co struct {
+	V float64 `json:"v"`
+}
+
+type D struct {
 	V int64 `json:"v"`
 }
 
 type Time struct {
-	V  int64  `json:"v"`
 	S  string `json:"s"`
 	Tz string `json:"tz"`
+	V  int64  `json:"v"`
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jurgen-kluft/hass-go/aqi"
 	"github.com/jurgen-kluft/hass-go/calendar"
 	"github.com/jurgen-kluft/hass-go/hass"
 	"github.com/jurgen-kluft/hass-go/lighting"
@@ -25,6 +26,7 @@ func main() {
 	calendarInstance, _ := calendar.New()
 	timeofdayInstance, _ := timeofday.New()
 	weatherInstance, _ := weather.New()
+	aqiInstance, _ := aqi.New()
 	suncalcInstance, _ := suncalc.New()
 	sensorsInstance, _ := sensors.New()
 	lightingInstance, _ := lighting.New()
@@ -47,6 +49,7 @@ func main() {
 		timeofdayInstance.Process(states)
 		suncalcInstance.Process(states)
 		weatherInstance.Process(states)
+		aqiInstance.Process(states)
 		lightingInstance.Process(states)
 		sensorsInstance.PublishSensors(states)
 		hassInstance.Process(states)
