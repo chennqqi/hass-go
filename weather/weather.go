@@ -237,10 +237,10 @@ func atHour(date time.Time, h int, m int) time.Time {
 func (c *Client) Process(states *state.Domain) time.Duration {
 	now := states.GetTimeState("time", "now", time.Now())
 
-	// Weather update every 15 minutes
-	if now.Unix() > c.update.Unix() {
-		c.update = time.Unix(now.Unix()+15*60, 0)
-		fmt.Println("WEATHER: UPDATE")
+	// Weather update every 5 minutes
+	if now.Unix() >= c.update.Unix() {
+		c.update = time.Unix(now.Unix()+5*60, 0)
+		//fmt.Println("WEATHER: UPDATE")
 
 		lat := states.GetFloatState("geo", "latitude", c.latitude)
 		lng := states.GetFloatState("geo", "longitude", c.longitude)
@@ -263,5 +263,10 @@ func (c *Client) Process(states *state.Domain) time.Duration {
 			c.updateHourly(atHour(now, 6, 0), atHour(now, 20, 0), states, forecast.Hourly)
 		}
 	}
-	return 1 * time.Second
+
+	wait := time.Duration(c.update.Unix()-time.Now().Unix()) * time.Second
+	if wait < 0 {
+		wait = 0
+	}
+	return wait
 }

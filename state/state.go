@@ -12,6 +12,7 @@ type Instance struct {
 	Strings map[string]string
 	Floats  map[string]float64
 	Times   map[string]time.Time
+	Changes int64
 }
 
 // Domain is a map that holds multiple instances like:
@@ -34,6 +35,7 @@ func (d *Domain) Add(domain string) *Instance {
 	s.Strings = map[string]string{}
 	s.Floats = map[string]float64{}
 	s.Times = map[string]time.Time{}
+	s.Changes = 0
 	d.Domain[domain] = s
 	return s
 }
@@ -45,6 +47,7 @@ func (d *Domain) Get(domain string) *Instance {
 	}
 	return s
 }
+
 func (d *Domain) Clear(domain string) *Instance {
 	s, exists := d.Domain[domain]
 	if !exists {
@@ -55,16 +58,10 @@ func (d *Domain) Clear(domain string) *Instance {
 	return s
 }
 
-// Merge will take all states of 'from' and insert them into 's'
-func (s *Instance) Merge(from *Instance) {
-	for k, v := range from.Strings {
-		s.Strings[k] = v
-	}
-	for k, v := range from.Floats {
-		s.Floats[k] = v
-	}
-	for k, v := range from.Times {
-		s.Times[k] = v
+// ResetChangeTracking will reset the tracking of changes for every state
+func (d *Domain) ResetChangeTracking() {
+	for _, state := range d.Domain {
+		state.Changes = 0
 	}
 }
 
@@ -73,6 +70,11 @@ func (s *Instance) Clear() {
 	s.Strings = map[string]string{}
 	s.Floats = map[string]float64{}
 	s.Times = map[string]time.Time{}
+	s.Changes = 0
+}
+
+func (s *Instance) HasChanged() bool {
+	return s.Changes != 0
 }
 
 func (s *Instance) HasBoolState(name string) bool {
@@ -92,6 +94,9 @@ func (s *Instance) SetBoolState(name string, state bool) (bool, bool) {
 	s.Bools[name] = state
 	if !exists {
 		v = state
+		s.Changes++
+	} else if v != state {
+		s.Changes++
 	}
 	return v, exists
 }
@@ -113,6 +118,9 @@ func (s *Instance) SetStringState(name string, state string) (string, bool) {
 	s.Strings[name] = state
 	if !exists {
 		str = state
+		s.Changes++
+	} else if str != state {
+		s.Changes++
 	}
 	return str, exists
 }
@@ -134,6 +142,9 @@ func (s *Instance) SetFloatState(name string, state float64) (float64, bool) {
 	s.Floats[name] = state
 	if !exists {
 		f = state
+		s.Changes++
+	} else if f != state {
+		s.Changes++
 	}
 	return f, exists
 }
@@ -155,6 +166,9 @@ func (s *Instance) SetTimeState(name string, state time.Time) (time.Time, bool) 
 	s.Times[name] = state
 	if !exists {
 		t = state
+		s.Changes++
+	} else if state != t {
+		s.Changes++
 	}
 	return t, exists
 }

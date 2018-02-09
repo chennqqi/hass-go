@@ -58,9 +58,9 @@ func New() (*Calendar, error) {
 }
 
 func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
-	fmt.Printf("Update calendar events: '%d'\n", len(c.cals))
+	//fmt.Printf("Update calendar events: '%d'\n", len(c.cals))
 	for _, cal := range c.cals {
-		fmt.Printf("Update calendar events: '%s'\n", cal.Name)
+		//fmt.Printf("Update calendar events: '%s'\n", cal.Name)
 
 		eventsForDay := cal.GetEventsByDate(when)
 		for _, e := range eventsForDay {
@@ -70,7 +70,7 @@ func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
 			title := strings.Replace(e.Summary, ":", " : ", 1)
 			title = strings.Replace(title, "=", " = ", 1)
 			fmt.Sscanf(title, "%s : %s = %s", &domain, &dname, &dstate)
-			fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
+			//fmt.Printf("Parsed: '%s' - '%s' - '%s'\n", domain, dname, dstate)
 
 			domain = strings.ToLower(domain)
 			dname = strings.ToLower(dname)
@@ -236,7 +236,7 @@ func (c *Calendar) Process(states *state.Domain) time.Duration {
 	err = c.updateEvents(now, states)
 	if err != nil {
 		fmt.Printf("ERROR: '%s'\n", err.Error())
-		return 15 * time.Minute
+		return 1 * time.Minute
 	}
 
 	states.SetBoolState("calendar", "weekend", weekend)
@@ -254,5 +254,5 @@ func (c *Calendar) Process(states *state.Domain) time.Duration {
 	states.SetStringState("calendar", "weekend.description", "Saturday and Sunday")
 	states.SetStringState("calendar", "weekday.description", "Monday to Friday")
 
-	return 15 * time.Minute
+	return 1 * time.Minute
 }

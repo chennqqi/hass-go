@@ -17,22 +17,51 @@ import (
 	"github.com/jurgen-kluft/hass-go/weather"
 )
 
-type waiter struct {
-	wait   time.Duration
+type scheduler struct {
+	wait   map[string]time.Time
 	states *state.Domain
 }
 
-type process func(states *state.Domain) time.Duration
+type processfn func(states *state.Domain) time.Duration
 
-func (w *waiter) process(wait time.Duration) {
-	if wait < w.wait {
-		w.wait = wait
-	}
+func NewScheduler(states *state.Domain) *scheduler {
+	s := &scheduler{}
+	s.wait = map[string]time.Time{}
+	s.states = states
+	return s
 }
 
-func (w *waiter) sleep() {
-	time.Sleep(w.wait)
-	w.wait = 30 * time.Minute
+func (s *scheduler) process(tag string, fn processfn) int {
+	now := time.Now()
+	updateAt, exists := s.wait[tag]
+	if !exists {
+		updateAt = now
+		s.wait[tag] = updateAt
+	}
+
+	if now.Unix() >= updateAt.Unix() {
+		wait := fn(s.states)
+		now = time.Now()
+		fmt.Printf("Scheduler updated '%s'\n", tag)
+		s.wait[tag] = now.Add(wait)
+		return 1
+	}
+	return 0
+}
+
+// sleep will figure out the earliest time a certain process needs
+// to be updated and it will take that duration and sleep.
+// Note: The maximum sleep time is 1 minute.
+func (s *scheduler) sleep() {
+	now := time.Now()
+	earliest := now.Add(1 * time.Minute)
+	for _, t := range s.wait {
+		if t.Unix() < earliest.Unix() {
+			earliest = t
+		}
+	}
+	wait := time.Duration(earliest.Unix()-now.Unix()) * time.Second
+	time.Sleep(wait)
 }
 
 func main() {
@@ -51,7 +80,7 @@ func main() {
 	hassInstance, _ := hass.New()
 	reporterInstance, _ := reporter.New()
 
-	waiter := &waiter{}
+	scheduler := NewScheduler(states)
 	for true {
 		now := time.Now()
 		states.SetTimeState("time", "now", now)
@@ -59,23 +88,25 @@ func main() {
 		fmt.Println("----- UPDATE -------")
 
 		// Process
-		waiter.wait = 30 * time.Minute
-		waiter.process(calendarInstance.Process(states))
-		waiter.process(calendarInstance.Process(states))
-		waiter.process(timeofdayInstance.Process(states))
-		waiter.process(suncalcInstance.Process(states))
-		waiter.process(weatherInstance.Process(states))
-		waiter.process(aqiInstance.Process(states))
-		waiter.process(lightingInstance.Process(states))
-		waiter.process(sensorsInstance.Process(states))
-		waiter.process(hassInstance.Process(states))
-		waiter.process(reporterInstance.Process(states))
-		waiter.process(shoutInstance.Process(states))
+		updated := 0
+		updated += scheduler.process("calendar", func(states *state.Domain) time.Duration { return calendarInstance.Process(states) })
+		updated += scheduler.process("timeofday", func(states *state.Domain) time.Duration { return timeofdayInstance.Process(states) })
+		updated += scheduler.process("suncalc", func(states *state.Domain) time.Duration { return suncalcInstance.Process(states) })
+		updated += scheduler.process("weather", func(states *state.Domain) time.Duration { return weatherInstance.Process(states) })
+		updated += scheduler.process("aqi", func(states *state.Domain) time.Duration { return aqiInstance.Process(states) })
+		updated += scheduler.process("lighting", func(states *state.Domain) time.Duration { return lightingInstance.Process(states) })
+		updated += scheduler.process("sensors", func(states *state.Domain) time.Duration { return sensorsInstance.Process(states) })
+		updated += scheduler.process("hass", func(states *state.Domain) time.Duration { return hassInstance.Process(states) })
+		updated += scheduler.process("reporter", func(states *state.Domain) time.Duration { return reporterInstance.Process(states) })
+		updated += scheduler.process("shout", func(states *state.Domain) time.Duration { return shoutInstance.Process(states) })
 
-		states.PrintNamed("time")
-		states.PrintNamed("hass")
-		fmt.Println("")
+		if updated > 0 {
+			states.PrintNamed("time")
+			states.PrintNamed("hass")
+			fmt.Println("")
+		}
 
-		waiter.sleep()
+		states.ResetChangeTracking()
+		scheduler.sleep()
 	}
 }

@@ -65,19 +65,17 @@ func (c *Instance) reportWeather(ID string, states *state.Domain) {
 
 func (c *Instance) Process(states *state.Domain) time.Duration {
 
-	// In calendar these are written as:
-	//
-	//     report:weather=
-
 	reports := states.Get("report")
-	for _, r := range reports.Strings {
-		if r == "weather" {
-			if reports.HasStringState(r + ".ID") {
-				id := reports.GetStringState(r+".ID", "")
-				c.reportWeather(id, states)
+	if reports.HasChanged() {
+		for _, r := range reports.Strings {
+			if r == "weather" {
+				if reports.HasStringState(r + ".ID") {
+					id := reports.GetStringState(r+".ID", "")
+					c.reportWeather(id, states)
+				}
 			}
 		}
+		reports.Clear()
 	}
-
-	return 1 * time.Second
+	return 30 * time.Second
 }

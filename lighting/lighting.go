@@ -253,9 +253,9 @@ func (l *Instance) Process(states *state.Domain) time.Duration {
 		states.SetFloatState("lighting", "lights_"+ltype.name+"_bri", math.Floor(lbri))
 	}
 
-	states.SetFloatState("lighting", "lights_ct", CT)
-	states.SetFloatState("lighting", "lights_bri", BRI)
+	states.SetFloatState("lighting", "lights_ct", float64(int64(CT*100.0))/100.0)
+	states.SetFloatState("lighting", "lights_bri", float64(int64(BRI*100.0))/100.0)
 	states.SetStringState("lighting", "darklight", current.darkorlight)
 
-	return 1 * time.Second
+	return 30 * time.Second
 }

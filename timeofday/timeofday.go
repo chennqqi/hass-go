@@ -32,10 +32,10 @@ func New() (c *Instance, err error) {
 	return c, err
 }
 
-func isTimeofday(now time.Time, tod Ctime) bool {
-	t0 := now.Hour()*3600 + now.Minute()*60 + now.Second()
-	t1 := tod.Hour()*3600 + tod.Minute()*60 + tod.Second()
-	return t0 < t1
+func isTimeofday(now time.Time, tod Ctime) (bool, int64) {
+	t0 := int64(now.Hour())*3600 + int64(now.Minute())*60 + int64(now.Second())
+	t1 := int64(tod.Hour())*3600 + int64(tod.Minute())*60 + int64(tod.Second())
+	return t0 < t1, t1 - t0
 }
 
 func (c *Instance) Process(states *state.Domain) time.Duration {
@@ -47,12 +47,14 @@ func (c *Instance) Process(states *state.Domain) time.Duration {
 		tods, _ = c.tod.Weekday["anyday"]
 	}
 
+	wait := int64(10)
 	for _, tod := range tods {
-		if isTimeofday(now, tod.From) {
+		var istod bool
+		istod, wait = isTimeofday(now, tod.From)
+		if istod {
 			states.SetStringState("time", "tod", tod.Name)
 			break
 		}
 	}
-
-	return 1 * time.Second
+	return time.Duration(wait) * time.Second
 }

@@ -87,5 +87,5 @@ func (c *Instance) Process(states *state.Domain) time.Duration {
 		}
 		c.update = now.Add(c.period)
 	}
-	return 1 * time.Second
+	return 5 * time.Minute
 }

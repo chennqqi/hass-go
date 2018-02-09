@@ -60,19 +60,20 @@ func New() (*Instance, error) {
 
 func (c *Instance) Process(states *state.Domain) time.Duration {
 	sensors := states.Get("hass")
-	for sn, _ := range sensors.Strings {
-		surl := c.url
-		sbody := c.body
-		for vk, vv := range c.vars {
-			vval := states.GetStringState("sensor", sn+"."+vk, "") // Sensor value in string format
-			surl = strings.Replace(surl, vv, vval, 1)
-			sbody = strings.Replace(sbody, vv, vval, 1)
-		}
-		err := postHttpSensor(surl, sbody)
-		if err != nil {
-			break
+	if sensors.HasChanged() {
+		for sn, _ := range sensors.Strings {
+			surl := c.url
+			sbody := c.body
+			for vk, vv := range c.vars {
+				vval := states.GetStringState("sensor", sn+"."+vk, "") // Sensor value in string format
+				surl = strings.Replace(surl, vv, vval, 1)
+				sbody = strings.Replace(sbody, vv, vval, 1)
+			}
+			err := postHttpSensor(surl, sbody)
+			if err != nil {
+				break
+			}
 		}
 	}
-
-	return 1 * time.Second
+	return 30 * time.Second
 }

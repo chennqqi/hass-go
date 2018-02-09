@@ -471,5 +471,9 @@ func (s *Instance) Process(states *state.Domain) time.Duration {
 	_, moonPhase, _ := getMoonIllumination(now)
 	states.SetFloatState("sun", "moon.phase", moonPhase)
 
-	return 1 * time.Second
+	// Update every whole hour, compute the duration from now to the next whole hour
+	whour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
+	whour = whour.Add(1 * time.Hour)
+	wait := whour.Unix() - now.Unix()
+	return time.Duration(wait) * time.Second
 }
