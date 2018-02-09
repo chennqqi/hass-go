@@ -84,6 +84,7 @@ func main() {
 	for true {
 		now := time.Now()
 		states.SetTimeState("time", "now", now)
+		states.Get("time").ResetChangeTracking()
 
 		fmt.Println("----- UPDATE -------")
 
@@ -101,12 +102,10 @@ func main() {
 		updated += scheduler.process("shout", func(states *state.Domain) time.Duration { return shoutInstance.Process(states) })
 
 		if updated > 0 {
-			states.PrintNamed("time")
-			states.PrintNamed("hass")
+			states.PrintChanged()
 			fmt.Println("")
 		}
 
-		states.ResetChangeTracking()
 		scheduler.sleep()
 	}
 }

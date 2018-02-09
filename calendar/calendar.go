@@ -239,20 +239,19 @@ func (c *Calendar) Process(states *state.Domain) time.Duration {
 		return 1 * time.Minute
 	}
 
-	states.SetBoolState("calendar", "weekend", weekend)
-	states.SetBoolState("calendar", "weekday", !weekend)
+	calendar := states.Get("calendar")
+	calendar.ResetChangeTracking()
 
-	states.SetTimeState("calendar", "weekend.start", weStart)
-	states.SetTimeState("calendar", "weekend.end", weEnd)
-
-	states.SetTimeState("calendar", "weekday.start", wdStart)
-	states.SetTimeState("calendar", "weekday.end", wdEnd)
-
-	states.SetStringState("calendar", "weekend.title", "Weekend")
-	states.SetStringState("calendar", "weekday.title", "Weekday")
-
-	states.SetStringState("calendar", "weekend.description", "Saturday and Sunday")
-	states.SetStringState("calendar", "weekday.description", "Monday to Friday")
+	calendar.SetBoolState("weekend", weekend)
+	calendar.SetBoolState("weekday", !weekend)
+	calendar.SetTimeState("weekend.start", weStart)
+	calendar.SetTimeState("weekend.end", weEnd)
+	calendar.SetTimeState("weekday.start", wdStart)
+	calendar.SetTimeState("weekday.end", wdEnd)
+	calendar.SetStringState("weekend.title", "Weekend")
+	calendar.SetStringState("weekday.title", "Weekday")
+	calendar.SetStringState("weekend.description", "Saturday and Sunday")
+	calendar.SetStringState("weekday.description", "Monday to Friday")
 
 	return 1 * time.Minute
 }

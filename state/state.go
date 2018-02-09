@@ -73,8 +73,53 @@ func (s *Instance) Clear() {
 	s.Changes = 0
 }
 
+func (s *Instance) RemoveAnyStartingWith(prefix string) {
+	toremove := []string{}
+	for k, _ := range s.Bools {
+		if strings.HasPrefix(k, prefix) {
+			toremove = append(toremove, k)
+		}
+	}
+	for _, k := range toremove {
+		delete(s.Bools, k)
+	}
+	toremove = []string{}
+
+	for k, _ := range s.Floats {
+		if strings.HasPrefix(k, prefix) {
+			toremove = append(toremove, k)
+		}
+	}
+	for _, k := range toremove {
+		delete(s.Floats, k)
+	}
+	toremove = []string{}
+	for k, _ := range s.Strings {
+		if strings.HasPrefix(k, prefix) {
+			toremove = append(toremove, k)
+		}
+	}
+	for _, k := range toremove {
+		delete(s.Strings, k)
+	}
+	toremove = []string{}
+	for k, _ := range s.Times {
+		if strings.HasPrefix(k, prefix) {
+			toremove = append(toremove, k)
+		}
+	}
+	for _, k := range toremove {
+		delete(s.Times, k)
+	}
+	toremove = []string{}
+}
+
 func (s *Instance) HasChanged() bool {
 	return s.Changes != 0
+}
+
+func (s *Instance) ResetChangeTracking() {
+	s.Changes = 0
 }
 
 func (s *Instance) HasBoolState(name string) bool {
@@ -201,10 +246,13 @@ func (d *Domain) SetBoolState(domain, name string, state bool) (bool, bool) {
 		s = d.Add(domain)
 	}
 	b, exists := s.Bools[name]
-	s.Bools[name] = state
 	if !exists {
 		b = state
+		s.Changes++
+	} else if b != state {
+		s.Changes++
 	}
+	s.Bools[name] = state
 	return b, exists
 }
 
@@ -234,10 +282,13 @@ func (d *Domain) SetStringState(domain, name string, state string) (string, bool
 		s = d.Add(domain)
 	}
 	str, exists := s.Strings[name]
-	s.Strings[name] = state
 	if !exists {
 		str = state
+		s.Changes++
+	} else if str != state {
+		s.Changes++
 	}
+	s.Strings[name] = state
 	return str, exists
 }
 
@@ -267,10 +318,13 @@ func (d *Domain) SetFloatState(domain, name string, state float64) (float64, boo
 		s = d.Add(domain)
 	}
 	f, exists := s.Floats[name]
-	s.Floats[name] = state
 	if !exists {
 		f = state
+		s.Changes++
+	} else if state != f {
+		s.Changes++
 	}
+	s.Floats[name] = state
 	return f, exists
 }
 
@@ -300,16 +354,26 @@ func (d *Domain) SetTimeState(domain, name string, state time.Time) (time.Time, 
 		s = d.Add(domain)
 	}
 	t, exists := s.Times[name]
-	s.Times[name] = state
 	if !exists {
 		t = state
+		s.Changes++
+	} else if t != state {
+		s.Changes++
 	}
+	s.Times[name] = state
 	return t, exists
 }
 
 func (d *Domain) Print() {
 	for k, v := range d.Domain {
 		v.Print(k)
+	}
+}
+func (d *Domain) PrintChanged() {
+	for k, v := range d.Domain {
+		if v.HasChanged() {
+			v.Print(k)
+		}
 	}
 }
 func (d *Domain) PrintNamed(domain string) {

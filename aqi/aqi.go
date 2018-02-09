@@ -78,12 +78,14 @@ func (c *Instance) Process(states *state.Domain) time.Duration {
 	now := states.GetTimeState("time", "now", time.Now())
 	if now.Unix() >= c.update.Unix() {
 		aqi, err := c.getResponse()
+		weather := states.Get("weather")
+		weather.ResetChangeTracking()
 		if err == nil {
-			states.SetFloatState("weather", "aqi", aqi)
+			weather.SetFloatState("aqi", aqi)
 			tag, implications, caution := getAiqTagAndDescr(aqi)
-			states.SetStringState("weather", "aqi", tag)
-			states.SetStringState("weather", "aqi.implications", implications)
-			states.SetStringState("weather", "aqi.caution", caution)
+			weather.SetStringState("aqi", tag)
+			weather.SetStringState("aqi.implications", implications)
+			weather.SetStringState("aqi.caution", caution)
 		}
 		c.update = now.Add(c.period)
 	}

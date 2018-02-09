@@ -159,6 +159,8 @@ func (c *Client) getWindDescription(wind float64) string {
 }
 
 func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) {
+	weather := states.Get("weather")
+	weather.RemoveAnyStartingWith("hour")
 
 	for _, dp := range hourly.Data {
 		hfrom := time.Unix(dp.Time.Unix(), 0)
@@ -242,6 +244,9 @@ func (c *Client) Process(states *state.Domain) time.Duration {
 		c.update = time.Unix(now.Unix()+5*60, 0)
 		//fmt.Println("WEATHER: UPDATE")
 
+		weather := states.Get("weather")
+		weather.ResetChangeTracking()
+
 		lat := states.GetFloatState("geo", "latitude", c.latitude)
 		lng := states.GetFloatState("geo", "longitude", c.longitude)
 		forecast, err := c.darksky.GetForecast(fmt.Sprint(lat), fmt.Sprint(lng), c.darkargs)
@@ -249,9 +254,6 @@ func (c *Client) Process(states *state.Domain) time.Duration {
 
 			from := now
 			until := hoursLater(from, 3.0)
-
-			weather := states.Get("weather")
-			weather.Clear()
 
 			weather.SetTimeState("currently:from", from)
 			weather.SetTimeState("currently:until", until)

@@ -59,9 +59,9 @@ func New() (*Instance, error) {
 }
 
 func (c *Instance) Process(states *state.Domain) time.Duration {
-	sensors := states.Get("hass")
-	if sensors.HasChanged() {
-		for sn, _ := range sensors.Strings {
+	hass := states.Get("hass")
+	if hass.HasChanged() {
+		for sn, _ := range hass.Strings {
 			surl := c.url
 			sbody := c.body
 			for vk, vv := range c.vars {
@@ -74,6 +74,7 @@ func (c *Instance) Process(states *state.Domain) time.Duration {
 				break
 			}
 		}
+		hass.ResetChangeTracking()
 	}
 	return 30 * time.Second
 }

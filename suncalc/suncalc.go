@@ -464,12 +464,14 @@ func (s *Instance) Process(states *state.Domain) time.Duration {
 	lng := states.GetFloatState("geo", "longitude", s.longitude)
 	//fmt.Printf("SunCalc: lat = %f, lng = %f\n", lat, lng)
 	moments := s.getMoments(now, lat, lng)
+	suncalc := states.Get("sun")
+	suncalc.ResetChangeTracking()
 	for _, m := range moments {
-		states.SetTimeState("sun", m.title+".begin", m.start)
-		states.SetTimeState("sun", m.title+".end", m.end)
+		suncalc.SetTimeState(m.title+".begin", m.start)
+		suncalc.SetTimeState(m.title+".end", m.end)
 	}
 	_, moonPhase, _ := getMoonIllumination(now)
-	states.SetFloatState("sun", "moon.phase", moonPhase)
+	suncalc.SetFloatState("moon.phase", moonPhase)
 
 	// Update every whole hour, compute the duration from now to the next whole hour
 	whour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())

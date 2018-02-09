@@ -184,6 +184,10 @@ func (l *Instance) Process(states *state.Domain) time.Duration {
 		t = t.Add(at.shift)
 		states.SetTimeState("sun", at.name+at.tag, t)
 	}
+
+	lighting := states.Get("lighting")
+	lighting.ResetChangeTracking()
+
 	current := lighttime{}
 	currentx := 0.0 // Time interpolation factor, where are we between startMoment - endMoment
 	for _, lt := range l.lighttable {
@@ -192,8 +196,9 @@ func (l *Instance) Process(states *state.Domain) time.Duration {
 		if inTimeSpan(t0, t1, now) {
 			current = lt
 			currentx = computeTimeSpanX(t0, t1, now)
+			currentx = float64(int64(currentx*100.0)) / 100.0
 			//fmt.Printf("Current lighttime: %s -> %s (x: %f)\n\n", current.startMoment, current.endMoment, currentx)
-			states.SetStringState("lighting", "current", fmt.Sprintf("%s -> %s (x: %f)", current.startMoment, current.endMoment, currentx))
+			lighting.SetStringState("current", fmt.Sprintf("%s -> %s (x: %f)", current.startMoment, current.endMoment, currentx))
 			break
 		}
 	}
@@ -249,13 +254,13 @@ func (l *Instance) Process(states *state.Domain) time.Duration {
 	for _, ltype := range l.lighttypes {
 		lct := ltype.minCT + CT*(ltype.maxCT-ltype.minCT)
 		lbri := ltype.minBRI + BRI*(ltype.maxBRI-ltype.minBRI)
-		states.SetFloatState("lighting", "lights_"+ltype.name+"_ct", math.Floor(lct))
-		states.SetFloatState("lighting", "lights_"+ltype.name+"_bri", math.Floor(lbri))
+		lighting.SetFloatState("lights_"+ltype.name+"_ct", math.Floor(lct))
+		lighting.SetFloatState("lights_"+ltype.name+"_bri", math.Floor(lbri))
 	}
 
-	states.SetFloatState("lighting", "lights_ct", float64(int64(CT*100.0))/100.0)
-	states.SetFloatState("lighting", "lights_bri", float64(int64(BRI*100.0))/100.0)
-	states.SetStringState("lighting", "darklight", current.darkorlight)
+	lighting.SetFloatState("lights_ct", float64(int64(CT*100.0))/100.0)
+	lighting.SetFloatState("lights_bri", float64(int64(BRI*100.0))/100.0)
+	lighting.SetStringState("darklight", current.darkorlight)
 
 	return 30 * time.Second
 }
