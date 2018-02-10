@@ -13,7 +13,15 @@ func (r *Caqi) marshal() ([]byte, error) {
 }
 
 type Caqi struct {
-	Token string `json:"token"`
-	City  string `json:"city"`
-	URL   string `json:"url"`
+	Token  string     `json:"token"`
+	City   string     `json:"city"`
+	URL    string     `json:"url"`
+	Levels []AqiLevel `json:"levels"`
+}
+
+type AqiLevel struct {
+	LessThan     float64 `json:"lessthan"`
+	Tag          string  `json:"tag"`
+	Implications string  `json:"implications"`
+	Caution      string  `json:"caution"`
 }

@@ -12,23 +12,43 @@ type Property struct {
 	I int64
 	S string
 	T time.Time
-	X []Trigger
+	X map[string]Trigger
+}
+
+func New() *Properties {
+	p := &Properties{}
+	p.P = map[string]*Property{}
+	return p
 }
 
 type Properties struct {
 	P map[string]*Property
 }
 
+// PROPERTIES
+
+func (p *Properties) AddProperty(name string) *Property {
+	prop := &Property{X: map[string]Trigger{}}
+	p.P[name] = prop
+	return prop
+}
+
 // TRIGGER
 
-func (p *Properties) RegisterTrigger(name string, trigger Trigger) {
+func (p *Properties) AddTrigger(name string, tag string, trigger Trigger) {
 	prop, exists := p.P[name]
 	if !exists {
-		prop = &Property{X: []Trigger{}}
-		p.P[name] = prop
+		prop = p.AddProperty(name)
 	}
-	prop.X = append(prop.X, trigger)
+	prop.X[tag] = trigger
 	return
+}
+
+func (p *Properties) RemoveTrigger(name string, tag string) {
+	prop, exists := p.P[name]
+	if exists {
+		delete(prop.X, tag)
+	}
 }
 
 // TRIGGER
@@ -61,8 +81,8 @@ func (p *Properties) SetBoolState(name string, newstate bool) (oldstate bool, ex
 	if existed {
 		oldstate = prop.I != 0
 	} else {
-		prop = &Property{B: newstate, X: []Trigger{}}
-		p.P[name] = prop
+		prop = p.AddProperty(name)
+		prop.B = newstate
 		oldstate = !newstate
 	}
 	prop.B = newstate
@@ -94,8 +114,8 @@ func (p *Properties) SetFloatState(name string, newstate float64) (oldstate floa
 	if existed {
 		oldstate = prop.F
 	} else {
-		prop = &Property{F: newstate, X: []Trigger{}}
-		p.P[name] = prop
+		prop = p.AddProperty(name)
+		prop.F = newstate
 		oldstate = newstate
 	}
 	prop.F = newstate
@@ -124,8 +144,8 @@ func (p *Properties) SetIntState(name string, newstate int64) (oldstate int64, e
 	if existed {
 		oldstate = prop.I
 	} else {
-		prop = &Property{I: newstate, X: []Trigger{}}
-		p.P[name] = prop
+		prop = p.AddProperty(name)
+		prop.I = newstate
 		oldstate = newstate
 	}
 	prop.I = newstate
@@ -154,8 +174,8 @@ func (p *Properties) SetStringState(name string, newstate string) (oldstate stri
 	if existed {
 		oldstate = prop.S
 	} else {
-		prop = &Property{S: newstate, X: []Trigger{}}
-		p.P[name] = prop
+		prop = p.AddProperty(name)
+		prop.S = newstate
 		oldstate = newstate
 	}
 	prop.S = newstate
@@ -184,8 +204,8 @@ func (p *Properties) SetTimeState(name string, newstate time.Time) (oldstate tim
 	if existed {
 		oldstate = prop.T
 	} else {
-		prop = &Property{T: newstate, X: []Trigger{}}
-		p.P[name] = prop
+		prop = p.AddProperty(name)
+		prop.T = newstate
 		oldstate = newstate
 	}
 	prop.T = newstate

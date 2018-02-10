@@ -38,10 +38,13 @@ func New() (c *Instance, err error) {
 
 func (c *Instance) getResponse() (AQI float64, err error) {
 	url := c.aqi.URL
+	url = strings.Replace(url, "${CITY}", c.aqi.City, 1)
+	url = strings.Replace(url, "${TOKEN}", c.aqi.Token, 1)
 	if strings.HasPrefix(url, "http") {
 		var resp *http.Response
+		fmt.Printf("HTTP Get, '%s'\n", url)
 		resp, err = http.Get(url)
-		if resp != nil {
+		if err != nil {
 			AQI = 99.0
 			resp.Body.Close()
 		} else {
@@ -57,20 +60,15 @@ func (c *Instance) getResponse() (AQI float64, err error) {
 	return
 }
 
-// TODO: This could go in the json configuration file
-func getAiqTagAndDescr(aiq float64) (tag, implications, caution string) {
-	if aiq < 50.0 {
-		return "Good", "Air quality is considered satisfactory, and air pollution poses little or no risk", "None"
-	} else if aiq < 100 {
-		return "Moderate", "Air quality is acceptable; however, for some pollutants there may be a moderate health concern for a very small number of people who are unusually sensitive to air pollution.", "Active children and adults, and people with respiratory disease, such as asthma, should limit prolonged outdoor exertion."
-	} else if aiq < 150 {
-		return "Unhealthy for Sensitive Groups (warning)", "Members of sensitive groups may experience health effects. The general public is not likely to be affected.", "Active children and adults, and people with respiratory disease, such as asthma, should limit prolonged outdoor exertion."
-	} else if aiq < 200 {
-		return "Unhealthy (warning)", "Everyone may begin to experience health effects; members of sensitive groups may experience more serious health effects", "Active children and adults, and people with respiratory disease, such as asthma, should avoid prolonged outdoor exertion; everyone else, especially children, should limit prolonged outdoor exertion"
-	} else if aiq < 300 {
-		return "Very Unhealthy (warning)", "Health warnings of emergency conditions. The entire population is more likely to be affected.", "Active children and adults, and people with respiratory disease, such as asthma, should avoid all outdoor exertion; everyone else, especially children, should limit outdoor exertion."
+func (c *Instance) getAiqTagAndDescr(aiq float64) (level AqiLevel) {
+	for _, l := range c.aqi.Levels {
+		if aiq < l.LessThan {
+			level = l
+			break
+		}
 	}
-	return "Hazardous", "Health alert: everyone may experience more serious health effects.", "Everyone should avoid all outdoor exertion"
+	level = c.aqi.Levels[1]
+	return
 }
 
 // Process will get the AQI and post it in "weather"
@@ -79,13 +77,15 @@ func (c *Instance) Process(states *state.Domain) time.Duration {
 	if now.Unix() >= c.update.Unix() {
 		aqi, err := c.getResponse()
 		weather := states.Get("weather")
-		weather.ResetChangeTracking()
+		//weather.ResetChangeTracking()
 		if err == nil {
 			weather.SetFloatState("aqi", aqi)
-			tag, implications, caution := getAiqTagAndDescr(aqi)
-			weather.SetStringState("aqi", tag)
-			weather.SetStringState("aqi.implications", implications)
-			weather.SetStringState("aqi.caution", caution)
+			level := c.getAiqTagAndDescr(aqi)
+			weather.SetStringState("aqi", level.Tag)
+			weather.SetStringState("aqi.implications", level.Implications)
+			weather.SetStringState("aqi.caution", level.Caution)
+		} else {
+			fmt.Println(err.Error())
 		}
 		c.update = now.Add(c.period)
 	}
