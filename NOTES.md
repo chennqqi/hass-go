@@ -54,4 +54,3 @@ Why ?
   - WEATHER
     - Update = Tick every 15 minutes of the hour
     - Push information to REDIS
-
