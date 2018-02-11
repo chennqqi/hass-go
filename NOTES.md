@@ -1,58 +1,57 @@
-# task graph with dependency and property changed triggers
+# Using REDIS and splitting all modules into micro-services
+
+Why ?
+
+- Every micro-service can wait for an external signal to update itself or
+  it can run at a certain time-period.
+  This could be done with Pub/Sub and having a dedicated micro-service
+  running that sends 'tick' messages at certain periods to micro-services 
+  that are running on a certain frequency.
+- Easier to debug and if the micro-service crashes it can restart
+- State can be saved into REDIS and every micro-service can read other 
+  micro-service properties from Redis.
+- Configuration of every micro-service can be pushed into REDIS and every
+  micro-service could restart itself when it detects that the configuration 
+  has changed.
 
 
-NOTE: A tick property has additional properties 'update:last' and 'update:next'
+  The modules are:
+  
+  - AQI
+    - Update = Tick
+    - HTTP GET from designated URL and parse JSON
+    - Write 'weather.currently:aqi' = 0-1000 value to REDIS
+  
+  - CALENDAR
+    - Update = Tick
+    - Read calendar information from REDIS
+    - Write 'weather.currently:aqi' = 0-1000 value to REDIS
+  
+  - CALENDAR CHANGED
+    - Update = Tick 5 minutes
+    - Will HTTP GET calendars and post them into REDIS
+    - Will send tick to CALENDAR when any calendar has changed (content hash)
 
-type Trigger interface {
-    func Trigger(previous, current string)
-}
+  - HASS
+    - Update = Tick 1 minute
+    - Get information from REDIS and HTTP POST to Home-Assistant
 
-type Type int
-const (
-    TypeBool Type = iota
-    TypeString Type
-    TypeInt Type
-    
-)
-
-type Property struct {
-    // B bool      -> encoded into I
-    // S string
-    // I int64     
-    // F float64   -> encoded into I
-    // T time.Time -> encoded in F
-    T Type
-}
-
-
-aqi has the following triggers
-- property aqi.tick
-
-calendar has the following triggers
-- property calendar.tick
-
-hass has the following triggers
-NOTE: Maybe a hass.sensor makes more sense
-- anything written to a 'sensor.NAME' property
-
-lighting has the following triggers
-- property weather.currently:clouds
-- property time.season
-- property lighting.tick
-
-reporter has the following triggers
-- anything written to the 'reporter' domain
-
-sensors has the following triggers
-NOTE: Maybe a sensors.sensor makes more sense to be triggered
-- all properties as listed in the configuration
-
-suncalc has the following triggers
-- property time.day
-
-timeofday has the following triggers
-- property timeofday.tick
-
-weather has the following triggers
-- property weather.tick
+  - LIGHTING
+    - Update = Tick 1 minute
+  
+  - REPORTER
+  
+  - SENSORS
+  
+  - SHOUT
+  
+  - SUNCALC
+    - Update = Tick 1 hour
+  
+  - TIMEOFDAY
+    - Update = Tick every 15 minutes of the hour
+  
+  - WEATHER
+    - Update = Tick every 15 minutes of the hour
+    - Push information to REDIS
 
