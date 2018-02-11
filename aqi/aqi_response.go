@@ -44,18 +44,22 @@ type City struct {
 }
 
 type Iaqi struct {
-	Co   float64 `json:"co"`
-	D    float64 `json:"d"`
-	H    float64 `json:"h"`
-	No2  float64 `json:"no2"`
-	O3   float64 `json:"o3"`
-	P    float64 `json:"p"`
-	Pm10 float64 `json:"pm10"`
-	Pm25 float64 `json:"pm25"`
-	So2  float64 `json:"so2"`
-	T    float64 `json:"t"`
-	W    float64 `json:"w"`
-	Wd   float64 `json:"wd"`
+	Co   Var `json:"co"`
+	D    Var `json:"d"`
+	H    Var `json:"h"`
+	No2  Var `json:"no2"`
+	O3   Var `json:"o3"`
+	P    Var `json:"p"`
+	Pm10 Var `json:"pm10"`
+	Pm25 Var `json:"pm25"`
+	So2  Var `json:"so2"`
+	T    Var `json:"t"`
+	W    Var `json:"w"`
+	Wd   Var `json:"wd"`
+}
+
+type Var struct {
+	V float64 `json:"v"`
 }
 
 type Time struct {

@@ -53,6 +53,9 @@ func (c *Instance) getResponse() (AQI float64, err error) {
 			var caqi CaqiResponse
 			caqi, err = unmarshalCaqiResponse(body)
 			AQI = float64(caqi.Data.Aqi)
+			if err != nil {
+				fmt.Print(string(body))
+			}
 		}
 	} else if strings.HasPrefix(url, "print") {
 		fmt.Printf("HTTP Get, '%s'\n", url)
@@ -64,7 +67,7 @@ func (c *Instance) getAiqTagAndDescr(aiq float64) (level AqiLevel) {
 	for _, l := range c.aqi.Levels {
 		if aiq < l.LessThan {
 			level = l
-			break
+			return
 		}
 	}
 	level = c.aqi.Levels[1]

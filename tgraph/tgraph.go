@@ -2,8 +2,10 @@ package tgraph
 
 import "time"
 
-type Trigger interface {
-	Trigger(name string, p *Property)
+type EventListener interface {
+	OnAdded(name string, p *Property)
+	OnRemoved(name string, p *Property)
+	OnChanged(name string, p *Property)
 }
 
 type Property struct {
@@ -12,7 +14,11 @@ type Property struct {
 	I int64
 	S string
 	T time.Time
-	X map[string]Trigger
+}
+
+type Properties struct {
+	P map[string]*Property
+	L map[string]EventListener
 }
 
 func New() *Properties {
@@ -21,52 +27,61 @@ func New() *Properties {
 	return p
 }
 
-type Properties struct {
-	P map[string]*Property
-}
-
 // PROPERTIES
 
+func (p *Properties) HasProperty(name string) bool {
+	_, exists := p.P[name]
+	return exists
+}
+
 func (p *Properties) AddProperty(name string) *Property {
-	prop := &Property{X: map[string]Trigger{}}
+	prop := &Property{}
 	p.P[name] = prop
+	p.onAdded(name, prop)
 	return prop
 }
 
+func (p *Properties) RemoveProperty(name string) (removed bool) {
+	prop, exists := p.P[name]
+	if exists {
+		p.onRemoved(name, prop)
+		delete(p.P, name)
+	}
+	return exists
+}
+
 // TRIGGER
 
-func (p *Properties) AddTrigger(name string, tag string, trigger Trigger) {
-	prop, exists := p.P[name]
-	if !exists {
-		prop = p.AddProperty(name)
-	}
-	prop.X[tag] = trigger
+func (p *Properties) AddListener(tag string, listener EventListener) {
+	p.L[tag] = listener
 	return
 }
 
-func (p *Properties) RemoveTrigger(name string, tag string) {
-	prop, exists := p.P[name]
-	if exists {
-		delete(prop.X, tag)
+func (p *Properties) RemoveListener(tag string) {
+	delete(p.L, tag)
+}
+
+func (p *Properties) onAdded(name string, property *Property) {
+	for _, listener := range p.L {
+		listener.OnAdded(name, property)
 	}
 }
 
-// TRIGGER
+func (p *Properties) onRemoved(name string, property *Property) {
+	for _, listener := range p.L {
+		listener.OnRemoved(name, property)
+	}
+}
 
-func (p *Property) CallTriggers(name string) {
-	for _, trigger := range p.X {
-		trigger.Trigger(name, p)
+func (p *Properties) onChanged(name string, property *Property) {
+	for _, listener := range p.L {
+		listener.OnChanged(name, property)
 	}
 }
 
 // BOOLEAN
 
-func (p *Properties) HasBoolState(name string) bool {
-	_, exists := p.P[name]
-	return exists
-}
-
-func (p *Properties) GetBoolState(name string, defaultstate bool) (currentstate bool, exists bool) {
+func (p *Properties) GetBool(name string, defaultstate bool) (currentstate bool, exists bool) {
 	prop, exists := p.P[name]
 	if exists {
 		currentstate = prop.B
@@ -76,30 +91,23 @@ func (p *Properties) GetBoolState(name string, defaultstate bool) (currentstate 
 	return
 }
 
-func (p *Properties) SetBoolState(name string, newstate bool) (oldstate bool, existed bool) {
+func (p *Properties) SetBool(name string, newstate bool) (oldstate bool, existed bool) {
 	prop, existed := p.P[name]
 	if existed {
 		oldstate = prop.I != 0
+		if oldstate != newstate {
+			p.onChanged(name, prop)
+		}
 	} else {
 		prop = p.AddProperty(name)
-		prop.B = newstate
-		oldstate = !newstate
 	}
 	prop.B = newstate
-	if oldstate != newstate {
-		prop.CallTriggers(name)
-	}
 	return
 }
 
 // 64-BIT FLOAT
 
-func (p *Properties) HasFloatState(name string) bool {
-	_, exists := p.P[name]
-	return exists
-}
-
-func (p *Properties) GetFloatState(name string, defaultstate float64) (currentstate float64, exists bool) {
+func (p *Properties) GetFloat(name string, defaultstate float64) (currentstate float64, exists bool) {
 	prop, exists := p.P[name]
 	if exists {
 		currentstate = prop.F
@@ -109,14 +117,15 @@ func (p *Properties) GetFloatState(name string, defaultstate float64) (currentst
 	return
 }
 
-func (p *Properties) SetFloatState(name string, newstate float64) (oldstate float64, existed bool) {
+func (p *Properties) SetFloat(name string, newstate float64) (oldstate float64, existed bool) {
 	prop, existed := p.P[name]
 	if existed {
 		oldstate = prop.F
+		if oldstate != newstate {
+			p.onChanged(name, prop)
+		}
 	} else {
 		prop = p.AddProperty(name)
-		prop.F = newstate
-		oldstate = newstate
 	}
 	prop.F = newstate
 	return
@@ -124,12 +133,7 @@ func (p *Properties) SetFloatState(name string, newstate float64) (oldstate floa
 
 // 64-BIT INTEGER
 
-func (p *Properties) HasIntState(name string) bool {
-	_, exists := p.P[name]
-	return exists
-}
-
-func (p *Properties) GetIntState(name string, defaultstate bool) (currentstate int64, exists bool) {
+func (p *Properties) GetInt(name string, defaultstate bool) (currentstate int64, exists bool) {
 	prop, exists := p.P[name]
 	if exists {
 		currentstate = prop.I
@@ -139,14 +143,15 @@ func (p *Properties) GetIntState(name string, defaultstate bool) (currentstate i
 	return
 }
 
-func (p *Properties) SetIntState(name string, newstate int64) (oldstate int64, existed bool) {
+func (p *Properties) SetInt(name string, newstate int64) (oldstate int64, existed bool) {
 	prop, existed := p.P[name]
 	if existed {
 		oldstate = prop.I
+		if oldstate != newstate {
+			p.onChanged(name, prop)
+		}
 	} else {
 		prop = p.AddProperty(name)
-		prop.I = newstate
-		oldstate = newstate
 	}
 	prop.I = newstate
 	return
@@ -154,12 +159,7 @@ func (p *Properties) SetIntState(name string, newstate int64) (oldstate int64, e
 
 // STRING
 
-func (p *Properties) HasStringState(name string) bool {
-	_, exists := p.P[name]
-	return exists
-}
-
-func (p *Properties) GetStringState(name string, defaultstate string) (currentstate string, exists bool) {
+func (p *Properties) GetString(name string, defaultstate string) (currentstate string, exists bool) {
 	prop, exists := p.P[name]
 	if exists {
 		currentstate = prop.S
@@ -169,14 +169,15 @@ func (p *Properties) GetStringState(name string, defaultstate string) (currentst
 	return
 }
 
-func (p *Properties) SetStringState(name string, newstate string) (oldstate string, existed bool) {
+func (p *Properties) SetString(name string, newstate string) (oldstate string, existed bool) {
 	prop, existed := p.P[name]
 	if existed {
 		oldstate = prop.S
+		if oldstate != newstate {
+			p.onChanged(name, prop)
+		}
 	} else {
 		prop = p.AddProperty(name)
-		prop.S = newstate
-		oldstate = newstate
 	}
 	prop.S = newstate
 	return
@@ -184,12 +185,7 @@ func (p *Properties) SetStringState(name string, newstate string) (oldstate stri
 
 // TIME
 
-func (p *Properties) HasTimeState(name string) bool {
-	_, exists := p.P[name]
-	return exists
-}
-
-func (p *Properties) GetTimeState(name string, defaultstate time.Time) (currentstate time.Time, exists bool) {
+func (p *Properties) GetTime(name string, defaultstate time.Time) (currentstate time.Time, exists bool) {
 	prop, exists := p.P[name]
 	if exists {
 		currentstate = prop.T
@@ -199,14 +195,15 @@ func (p *Properties) GetTimeState(name string, defaultstate time.Time) (currents
 	return
 }
 
-func (p *Properties) SetTimeState(name string, newstate time.Time) (oldstate time.Time, existed bool) {
+func (p *Properties) SetTime(name string, newstate time.Time) (oldstate time.Time, existed bool) {
 	prop, existed := p.P[name]
 	if existed {
 		oldstate = prop.T
+		if oldstate != newstate {
+			p.onChanged(name, prop)
+		}
 	} else {
 		prop = p.AddProperty(name)
-		prop.T = newstate
-		oldstate = newstate
 	}
 	prop.T = newstate
 	return
