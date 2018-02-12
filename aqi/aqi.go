@@ -75,18 +75,16 @@ func (c *Instance) getAiqTagAndDescr(aiq float64) (level AqiLevel) {
 }
 
 // Process will get the AQI and post it in "weather"
-func (c *Instance) Process(states *state.Domain) time.Duration {
-	now := states.GetTimeState("time", "now", time.Now())
+func (c *Instance) Process(states *state.Instance) time.Duration {
+	now := states.GetTimeState("time.now", time.Now())
 	if now.Unix() >= c.update.Unix() {
 		aqi, err := c.getResponse()
-		weather := states.Get("weather")
-		//weather.ResetChangeTracking()
 		if err == nil {
-			weather.SetFloatState("aqi", aqi)
+			states.SetFloatState("weather.aqi", aqi)
 			level := c.getAiqTagAndDescr(aqi)
-			weather.SetStringState("aqi", level.Tag)
-			weather.SetStringState("aqi.implications", level.Implications)
-			weather.SetStringState("aqi.caution", level.Caution)
+			states.SetStringState("weather.aqi", level.Tag)
+			states.SetStringState("weather.aqi.implications", level.Implications)
+			states.SetStringState("weather.aqi.caution", level.Caution)
 		} else {
 			fmt.Println(err.Error())
 		}

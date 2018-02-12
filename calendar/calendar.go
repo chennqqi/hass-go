@@ -57,7 +57,7 @@ func New() (*Calendar, error) {
 	return c, err
 }
 
-func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
+func (c *Calendar) updateEvents(when time.Time, states *state.Instance) error {
 	//fmt.Printf("Update calendar events: '%d'\n", len(c.cals))
 	for _, cal := range c.cals {
 		//fmt.Printf("Update calendar events: '%s'\n", cal.Name)
@@ -80,18 +80,18 @@ func (c *Calendar) updateEvents(when time.Time, states *state.Domain) error {
 			ce, exists := c.events[ekey]
 			if exists {
 				if domain == "report" {
-					states.SetStringState(domain, dname, e.GenerateUUID())
-					states.SetStringState(domain, dname+".ID", e.GenerateUUID())
-					states.SetTimeState(domain, dname+".from", e.Start)
-					states.SetTimeState(domain, dname+".until", e.End)
+					states.SetStringState(domain+"."+dname, e.GenerateUUID())
+					states.SetStringState(domain+"."+dname+".ID", e.GenerateUUID())
+					states.SetTimeState(domain+"."+dname+".from", e.Start)
+					states.SetTimeState(domain+"."+dname+".until", e.End)
 				}
 
 				if ce.Typeof == "string" {
-					states.SetStringState(domain, dname, dstate)
+					states.SetStringState(domain+"."+dname, dstate)
 				} else if ce.Typeof == "float" {
 					fstate, err := strconv.ParseFloat(dstate, 64)
 					if err == nil {
-						states.SetFloatState(domain, dname, fstate)
+						states.SetFloatState(domain+"."+dname, fstate)
 					}
 				}
 			}
@@ -186,9 +186,9 @@ func (c *Calendar) findPolicy(domain string, name string, policy string) (bool, 
 }
 
 // Process will update 'events' from the calendar
-func (c *Calendar) Process(states *state.Domain) time.Duration {
+func (c *Calendar) Process(states *state.Instance) time.Duration {
 	var err error
-	now := states.GetTimeState("time", "now", time.Now())
+	now := states.GetTimeState("time.now", time.Now())
 
 	if now.Unix() >= c.update.Unix() {
 		// Download again after 15 minutes
@@ -211,22 +211,22 @@ func (c *Calendar) Process(states *state.Domain) time.Duration {
 	// Default all states before updating them
 	for _, eevent := range c.events {
 		if eevent.Typeof == "string" {
-			states.SetStringState(eevent.Domain, eevent.Name, eevent.State)
+			states.SetStringState(eevent.Domain+"."+eevent.Name, eevent.State)
 			if weekend {
 				policyOk, policyValue := c.findPolicy(eevent.Domain, eevent.Name, "weekend")
 				if policyOk {
-					states.SetStringState(eevent.Domain, eevent.Name, policyValue)
+					states.SetStringState(eevent.Domain+"."+eevent.Name, policyValue)
 				}
 			} else {
 				policyOk, policyValue := c.findPolicy(eevent.Domain, eevent.Name, "!weekend")
 				if policyOk {
-					states.SetStringState(eevent.Domain, eevent.Name, policyValue)
+					states.SetStringState(eevent.Domain+"."+eevent.Name, policyValue)
 				}
 			}
 		} else if eevent.Typeof == "float" {
 			fstate, err := strconv.ParseFloat(eevent.State, 64)
 			if err == nil {
-				states.SetFloatState(eevent.Domain, eevent.Name, fstate)
+				states.SetFloatState(eevent.Domain+"."+eevent.Name, fstate)
 			}
 		}
 	}
@@ -239,19 +239,16 @@ func (c *Calendar) Process(states *state.Domain) time.Duration {
 		return 1 * time.Minute
 	}
 
-	calendar := states.Get("calendar")
-	calendar.ResetChangeTracking()
-
-	calendar.SetBoolState("weekend", weekend)
-	calendar.SetBoolState("weekday", !weekend)
-	calendar.SetTimeState("weekend.start", weStart)
-	calendar.SetTimeState("weekend.end", weEnd)
-	calendar.SetTimeState("weekday.start", wdStart)
-	calendar.SetTimeState("weekday.end", wdEnd)
-	calendar.SetStringState("weekend.title", "Weekend")
-	calendar.SetStringState("weekday.title", "Weekday")
-	calendar.SetStringState("weekend.description", "Saturday and Sunday")
-	calendar.SetStringState("weekday.description", "Monday to Friday")
+	states.SetBoolState("calendar.weekend", weekend)
+	states.SetBoolState("calendar.weekday", !weekend)
+	states.SetTimeState("calendar.weekend.start", weStart)
+	states.SetTimeState("calendar.weekend.end", weEnd)
+	states.SetTimeState("calendar.weekday.start", wdStart)
+	states.SetTimeState("calendar.weekday.end", wdEnd)
+	states.SetStringState("calendar.weekend.title", "Weekend")
+	states.SetStringState("calendar.weekday.title", "Weekday")
+	states.SetStringState("calendar.weekend.description", "Saturday and Sunday")
+	states.SetStringState("calendar.weekday.description", "Monday to Friday")
 
 	return 1 * time.Minute
 }

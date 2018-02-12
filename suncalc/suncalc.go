@@ -455,23 +455,22 @@ func New() (*Instance, error) {
 	return s, nil
 }
 
-func (s *Instance) Process(states *state.Domain) time.Duration {
-	now := states.GetTimeState("time", "now", time.Now())
+func (s *Instance) Process(states *state.Instance) time.Duration {
+	now := states.GetTimeState("time.now", time.Now())
 	now = time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, time.Local)
 	//fmt.Printf("Suncalc, now = %v\n", now)
 
-	lat := states.GetFloatState("geo", "latitude", s.latitude)
-	lng := states.GetFloatState("geo", "longitude", s.longitude)
+	lat := states.GetFloatState("geo.latitude", s.latitude)
+	lng := states.GetFloatState("geo.longitude", s.longitude)
 	//fmt.Printf("SunCalc: lat = %f, lng = %f\n", lat, lng)
 	moments := s.getMoments(now, lat, lng)
-	suncalc := states.Get("sun")
-	suncalc.ResetChangeTracking()
+
 	for _, m := range moments {
-		suncalc.SetTimeState(m.title+".begin", m.start)
-		suncalc.SetTimeState(m.title+".end", m.end)
+		states.SetTimeState("suncalc."+m.title+".begin", m.start)
+		states.SetTimeState("suncalc."+m.title+".end", m.end)
 	}
 	_, moonPhase, _ := getMoonIllumination(now)
-	suncalc.SetFloatState("moon.phase", moonPhase)
+	states.SetFloatState("suncalc.moon.phase", moonPhase)
 
 	// Update every whole hour, compute the duration from now to the next whole hour
 	whour := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())

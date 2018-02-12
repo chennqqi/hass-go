@@ -19,12 +19,12 @@ import (
 
 type scheduler struct {
 	wait   map[string]time.Time
-	states *state.Domain
+	states *state.Instance
 }
 
-type processfn func(states *state.Domain) time.Duration
+type processfn func(states *state.Instance) time.Duration
 
-func NewScheduler(states *state.Domain) *scheduler {
+func NewScheduler(states *state.Instance) *scheduler {
 	s := &scheduler{}
 	s.wait = map[string]time.Time{}
 	s.states = states
@@ -83,26 +83,25 @@ func main() {
 	scheduler := NewScheduler(states)
 	for true {
 		now := time.Now()
-		states.SetTimeState("time", "now", now)
-		states.Get("time").ResetChangeTracking()
+		states.SetTimeState("time.now", now)
 
 		fmt.Println("----- UPDATE -------")
 
 		// Process
 		updated := 0
-		updated += scheduler.process("calendar", func(states *state.Domain) time.Duration { return calendarInstance.Process(states) })
-		updated += scheduler.process("timeofday", func(states *state.Domain) time.Duration { return timeofdayInstance.Process(states) })
-		updated += scheduler.process("suncalc", func(states *state.Domain) time.Duration { return suncalcInstance.Process(states) })
-		updated += scheduler.process("weather", func(states *state.Domain) time.Duration { return weatherInstance.Process(states) })
-		updated += scheduler.process("aqi", func(states *state.Domain) time.Duration { return aqiInstance.Process(states) })
-		updated += scheduler.process("lighting", func(states *state.Domain) time.Duration { return lightingInstance.Process(states) })
-		updated += scheduler.process("sensors", func(states *state.Domain) time.Duration { return sensorsInstance.Process(states) })
-		updated += scheduler.process("hass", func(states *state.Domain) time.Duration { return hassInstance.Process(states) })
-		updated += scheduler.process("reporter", func(states *state.Domain) time.Duration { return reporterInstance.Process(states) })
-		updated += scheduler.process("shout", func(states *state.Domain) time.Duration { return shoutInstance.Process(states) })
+		updated += scheduler.process("calendar", func(states *state.Instance) time.Duration { return calendarInstance.Process(states) })
+		updated += scheduler.process("timeofday", func(states *state.Instance) time.Duration { return timeofdayInstance.Process(states) })
+		updated += scheduler.process("suncalc", func(states *state.Instance) time.Duration { return suncalcInstance.Process(states) })
+		updated += scheduler.process("weather", func(states *state.Instance) time.Duration { return weatherInstance.Process(states) })
+		updated += scheduler.process("aqi", func(states *state.Instance) time.Duration { return aqiInstance.Process(states) })
+		updated += scheduler.process("lighting", func(states *state.Instance) time.Duration { return lightingInstance.Process(states) })
+		updated += scheduler.process("sensors", func(states *state.Instance) time.Duration { return sensorsInstance.Process(states) })
+		updated += scheduler.process("hass", func(states *state.Instance) time.Duration { return hassInstance.Process(states) })
+		updated += scheduler.process("reporter", func(states *state.Instance) time.Duration { return reporterInstance.Process(states) })
+		updated += scheduler.process("shout", func(states *state.Instance) time.Duration { return shoutInstance.Process(states) })
 
 		if updated > 0 {
-			states.PrintChanged()
+			states.Print()
 			fmt.Println("")
 		}
 

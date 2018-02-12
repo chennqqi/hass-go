@@ -158,27 +158,26 @@ func (c *Client) getWindDescription(wind float64) string {
 	return ""
 }
 
-func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) {
-	weather := states.Get("weather")
-	weather.RemoveAnyStartingWith("hour")
+func (c *Client) updateHourly(from time.Time, until time.Time, states *state.Instance, hourly *darksky.DataBlock) {
+	states.RemoveAnyStartingWith("weather.hour")
 
 	for _, dp := range hourly.Data {
 		hfrom := time.Unix(dp.Time.Unix(), 0)
 		huntil := hoursLater(hfrom, 1.0)
 		hour := hfrom.Hour()
 		if timeRangeInGlobalRange(from, until, hfrom, huntil) {
-			states.SetTimeState("weather", fmt.Sprintf("hour[%d]:from", hour), hfrom)
-			states.SetTimeState("weather", fmt.Sprintf("hour[%d]:until", hour), huntil)
+			states.SetTimeState("weather."+fmt.Sprintf("hour[%d]:from", hour), hfrom)
+			states.SetTimeState("weather."+fmt.Sprintf("hour[%d]:until", hour), huntil)
 
-			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:rain", hour), dp.PrecipProbability)
-			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:clouds", hour), dp.CloudCover)
-			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:temperature", hour), dp.ApparentTemperature)
-			states.SetFloatState("weather", fmt.Sprintf("hour[%d]:wind", hour), dp.WindSpeed)
+			states.SetFloatState("weather."+fmt.Sprintf("hour[%d]:rain", hour), dp.PrecipProbability)
+			states.SetFloatState("weather."+fmt.Sprintf("hour[%d]:clouds", hour), dp.CloudCover)
+			states.SetFloatState("weather."+fmt.Sprintf("hour[%d]:temperature", hour), dp.ApparentTemperature)
+			states.SetFloatState("weather."+fmt.Sprintf("hour[%d]:wind", hour), dp.WindSpeed)
 
-			states.SetStringState("weather", fmt.Sprintf("hour[%d]:rain", hour), c.getRainDescription(dp.PrecipProbability))
-			states.SetStringState("weather", fmt.Sprintf("hour[%d]:clouds", hour), c.getCloudsDescription(dp.CloudCover))
-			states.SetStringState("weather", fmt.Sprintf("hour[%d]:temperature", hour), c.getTemperatureDescription(dp.ApparentTemperature))
-			states.SetStringState("weather", fmt.Sprintf("hour[%d]:wind", hour), c.getWindDescription(dp.WindSpeed))
+			states.SetStringState("weather."+fmt.Sprintf("hour[%d]:rain", hour), c.getRainDescription(dp.PrecipProbability))
+			states.SetStringState("weather."+fmt.Sprintf("hour[%d]:clouds", hour), c.getCloudsDescription(dp.CloudCover))
+			states.SetStringState("weather."+fmt.Sprintf("hour[%d]:temperature", hour), c.getTemperatureDescription(dp.ApparentTemperature))
+			states.SetStringState("weather."+fmt.Sprintf("hour[%d]:wind", hour), c.getWindDescription(dp.WindSpeed))
 		}
 	}
 }
@@ -191,7 +190,7 @@ func timeRangeInGlobalRange(globalFrom time.Time, globalUntil time.Time, from ti
 	return f >= gf && f < gu && u > gf && u <= gu
 }
 
-func chanceOfRain(from time.Time, until time.Time, states *state.Domain, hourly *darksky.DataBlock) (chanceOfRain string) {
+func chanceOfRain(from time.Time, until time.Time, states *state.Instance, hourly *darksky.DataBlock) (chanceOfRain string) {
 
 	precipProbability := 0.0
 	for _, dp := range hourly.Data {
@@ -236,31 +235,28 @@ func atHour(date time.Time, h int, m int) time.Time {
 	return now
 }
 
-func (c *Client) Process(states *state.Domain) time.Duration {
-	now := states.GetTimeState("time", "now", time.Now())
+func (c *Client) Process(states *state.Instance) time.Duration {
+	now := states.GetTimeState("time.now", time.Now())
 
 	// Weather update every 5 minutes
 	if now.Unix() >= c.update.Unix() {
 		c.update = time.Unix(now.Unix()+5*60, 0)
 		//fmt.Println("WEATHER: UPDATE")
 
-		weather := states.Get("weather")
-		weather.ResetChangeTracking()
-
-		lat := states.GetFloatState("geo", "latitude", c.latitude)
-		lng := states.GetFloatState("geo", "longitude", c.longitude)
+		lat := states.GetFloatState("geo.latitude", c.latitude)
+		lng := states.GetFloatState("geo.longitude", c.longitude)
 		forecast, err := c.darksky.GetForecast(fmt.Sprint(lat), fmt.Sprint(lng), c.darkargs)
 		if err == nil {
 
 			from := now
 			until := hoursLater(from, 3.0)
 
-			weather.SetTimeState("currently:from", from)
-			weather.SetTimeState("currently:until", until)
-			weather.SetStringState("currently:rain", chanceOfRain(from, until, states, forecast.Hourly))
-			weather.SetFloatState("currently:rain", forecast.Currently.PrecipProbability)
-			weather.SetFloatState("currently:clouds", forecast.Currently.CloudCover)
-			weather.SetFloatState("currently:temperature", forecast.Currently.ApparentTemperature)
+			states.SetTimeState("weather.currently:from", from)
+			states.SetTimeState("weather.currently:until", until)
+			states.SetStringState("weather.currently:rain", chanceOfRain(from, until, states, forecast.Hourly))
+			states.SetFloatState("weather.currently:rain", forecast.Currently.PrecipProbability)
+			states.SetFloatState("weather.currently:clouds", forecast.Currently.CloudCover)
+			states.SetFloatState("weather.currently:temperature", forecast.Currently.ApparentTemperature)
 
 			c.updateHourly(atHour(now, 6, 0), atHour(now, 20, 0), states, forecast.Hourly)
 		}

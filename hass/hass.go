@@ -58,14 +58,15 @@ func New() (*Instance, error) {
 	return s, nil
 }
 
-func (c *Instance) Process(states *state.Domain) time.Duration {
-	hass := states.Get("hass")
-	if hass.HasChanged() {
-		for sn, _ := range hass.Strings {
+func (c *Instance) Process(states *state.Instance) time.Duration {
+
+	for sn, _ := range states.Properties {
+		if strings.HasPrefix(sn, "hass.") {
+			sn = strings.Replace(sn, "hass.", "sensor.", 1)
 			surl := c.url
 			sbody := c.body
 			for vk, vv := range c.vars {
-				vval := states.GetStringState("sensor", sn+"."+vk, "") // Sensor value in string format
+				vval := states.GetStringState(sn+"."+vk, "") // Sensor value in string format
 				surl = strings.Replace(surl, vv, vval, 1)
 				sbody = strings.Replace(sbody, vv, vval, 1)
 			}
@@ -74,7 +75,6 @@ func (c *Instance) Process(states *state.Domain) time.Duration {
 				break
 			}
 		}
-		hass.ResetChangeTracking()
 	}
 	return 30 * time.Second
 }

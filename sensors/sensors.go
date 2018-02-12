@@ -55,28 +55,25 @@ func New() (*Sensors, error) {
 	return s, nil
 }
 
-// Process will write out the sensors to 'out'
-func (s *Sensors) Process(states *state.Domain) time.Duration {
-	hassState := states.Get("hass")
-	sensorState := states.Get("sensor")
-
+// Process will write out the sensors to 'sensor.'
+func (s *Sensors) Process(states *state.Instance) time.Duration {
 	for _, sensor := range s.ssensors {
-		if states.HasStringState(sensor.domain, sensor.name) {
-			state := states.GetStringState(sensor.domain, sensor.name, "")
-			hassState.SetStringState(sensor.name, state)
-			sensorState.SetStringState(sensor.name+".name", sensor.name)
-			sensorState.SetStringState(sensor.name+".state", state)
-			sensorState.SetStringState(sensor.name+".descr", sensor.descr)
-			sensorState.SetStringState(sensor.name+".unit", sensor.unit)
-		} else if states.HasFloatState(sensor.domain, sensor.name) {
-			state := states.GetFloatState(sensor.domain, sensor.name, 0.0)
-			hassState.SetStringState(sensor.name, fmt.Sprintf("%.2f", state))
-			sensorState.SetStringState(sensor.name+".name", sensor.name)
-			sensorState.SetStringState(sensor.name+".state", fmt.Sprintf("%.2f", state))
-			sensorState.SetStringState(sensor.name+".descr", sensor.descr)
-			sensorState.SetStringState(sensor.name+".unit", sensor.unit)
+		if states.HasStringState(sensor.domain + "." + sensor.name) {
+			state := states.GetStringState(sensor.domain+"."+sensor.name, "")
+			states.SetStringState("sensor."+sensor.name, state)
+			states.SetStringState("sensor."+sensor.name+".name", sensor.name)
+			states.SetStringState("sensor."+sensor.name+".state", state)
+			states.SetStringState("sensor."+sensor.name+".descr", sensor.descr)
+			states.SetStringState("sensor."+sensor.name+".unit", sensor.unit)
+		} else if states.HasFloatState(sensor.domain + "." + sensor.name) {
+			state := states.GetFloatState(sensor.domain+"."+sensor.name, 0.0)
+			states.SetStringState("sensor."+sensor.name, fmt.Sprintf("%.2f", state))
+			states.SetStringState("sensor."+sensor.name+".name", sensor.name)
+			states.SetStringState("sensor."+sensor.name+".state", fmt.Sprintf("%.2f", state))
+			states.SetStringState("sensor."+sensor.name+".descr", sensor.descr)
+			states.SetStringState("sensor."+sensor.name+".unit", sensor.unit)
 		} else {
-			fmt.Printf("ERROR: Sensor with name %s in domain %s doesn't exist\n", sensor.name, sensor.domain)
+			fmt.Printf("ERROR: Sensor %s.%s doesn't exist\n", sensor.name, sensor.domain)
 		}
 	}
 

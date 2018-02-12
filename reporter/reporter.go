@@ -2,6 +2,7 @@ package reporter
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jurgen-kluft/hass-go/state"
@@ -21,7 +22,7 @@ func (c *Instance) historyContainsID(ID string) bool {
 	return exists
 }
 
-func (c *Instance) reportWeather(ID string, states *state.Domain) {
+func (c *Instance) reportWeather(ID string, states *state.Instance) {
 	if !c.historyContainsID(ID) {
 		title := "Weather Report"
 
@@ -29,22 +30,20 @@ func (c *Instance) reportWeather(ID string, states *state.Domain) {
 		//  -  8:30 - 9:30
 		//  - 12:00 - 13:00
 		//  - 18:00 - 20:00
-		weather := states.Get("weather")
-
 		report := title + "\n"
-		report += "Change of rain is " + weather.GetStringState("currently:rain", "") + "\n"
+		report += "Change of rain is " + states.GetStringState("weather.currently:rain", "") + "\n"
 		//fmt.Print(report)
 
 		i := 1
 		for true {
-			key := fmt.Sprintf("hourly[%d]:", i)
-			if weather.HasTimeState(key + "from") {
-				hfrom := weather.GetTimeState(key+"from", time.Now())
-				huntil := weather.GetTimeState(key+"until", time.Now())
-				srain := weather.GetStringState(key+"rain", "")
-				scloud := weather.GetStringState(key+"clouds", "")
-				stemp := weather.GetStringState(key+"temperature", "")
-				temp := weather.GetFloatState(key+"temperature", 0.0)
+			key := fmt.Sprintf("weather.hourly[%d]:", i)
+			if states.HasTimeState(key + "from") {
+				hfrom := states.GetTimeState(key+"from", time.Now())
+				huntil := states.GetTimeState(key+"until", time.Now())
+				srain := states.GetStringState(key+"rain", "")
+				scloud := states.GetStringState(key+"clouds", "")
+				stemp := states.GetStringState(key+"temperature", "")
+				temp := states.GetFloatState(key+"temperature", 0.0)
 				line := fmt.Sprintf("%s, %s(%d), %s (%02d:%02d - %02d:%02d)\n", srain, stemp, int32(temp+0.5), scloud, hfrom.Hour(), hfrom.Minute(), huntil.Hour(), huntil.Minute())
 				//fmt.Print(line)
 
@@ -59,23 +58,18 @@ func (c *Instance) reportWeather(ID string, states *state.Domain) {
 		// Temperature morning - noon - evening
 
 		// Weather report to
-		states.SetStringState("shout", "msg:weather", report)
+		states.SetStringState("shout.msg:weather", report)
 	}
 }
 
-func (c *Instance) Process(states *state.Domain) time.Duration {
-
-	reports := states.Get("report")
-	if reports.HasChanged() {
-		for _, r := range reports.Strings {
-			if r == "weather" {
-				if reports.HasStringState(r + ".ID") {
-					id := reports.GetStringState(r+".ID", "")
-					c.reportWeather(id, states)
-				}
+func (c *Instance) Process(states *state.Instance) time.Duration {
+	for n := range states.Properties {
+		if strings.HasPrefix(n, "reports.weather") {
+			if states.HasStringState(n + ".ID") {
+				id := states.GetStringState(n+".ID", "")
+				c.reportWeather(id, states)
 			}
 		}
-		reports.Clear()
 	}
 	return 30 * time.Second
 }

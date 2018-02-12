@@ -6,401 +6,175 @@ import (
 	"time"
 )
 
-// Instance holds all state of our components in multiple 'map's
-type Instance struct {
-	Bools   map[string]bool
-	Strings map[string]string
-	Floats  map[string]float64
-	Times   map[string]time.Time
-	Changes int64
+type Property struct {
+	Bool   bool
+	String string
+	Float  float64
+	Time   time.Time
 }
 
-// Domain is a map that holds multiple instances like:
-// "sensor"
-// "report"
-type Domain struct {
-	Domain map[string]*Instance
+// Instance holds all state of our components in multiple 'map's
+type Instance struct {
+	Properties map[string]Property
 }
 
 // New constructs a new Instance
-func New() *Domain {
-	d := &Domain{}
-	d.Domain = map[string]*Instance{}
-	return d
-}
-
-func (d *Domain) Add(domain string) *Instance {
+func New() *Instance {
 	s := &Instance{}
-	s.Bools = map[string]bool{}
-	s.Strings = map[string]string{}
-	s.Floats = map[string]float64{}
-	s.Times = map[string]time.Time{}
-	s.Changes = 0
-	d.Domain[domain] = s
+	s.Properties = map[string]Property{}
 	return s
 }
 
-func (d *Domain) Get(domain string) *Instance {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
+func (s *Instance) Get(domain string) *Instance {
 	return s
-}
-
-func (d *Domain) Clear(domain string) *Instance {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	} else {
-		s.Clear()
-	}
-	return s
-}
-
-// ResetChangeTracking will reset the tracking of changes for every state
-func (d *Domain) ResetChangeTracking() {
-	for _, state := range d.Domain {
-		state.Changes = 0
-	}
-}
-
-func (s *Instance) Clear() {
-	s.Bools = map[string]bool{}
-	s.Strings = map[string]string{}
-	s.Floats = map[string]float64{}
-	s.Times = map[string]time.Time{}
-	s.Changes = 0
 }
 
 func (s *Instance) RemoveAnyStartingWith(prefix string) {
 	toremove := []string{}
-	for k, _ := range s.Bools {
+	for k, _ := range s.Properties {
 		if strings.HasPrefix(k, prefix) {
 			toremove = append(toremove, k)
 		}
 	}
 	for _, k := range toremove {
-		delete(s.Bools, k)
+		delete(s.Properties, k)
 	}
-	toremove = []string{}
-
-	for k, _ := range s.Floats {
-		if strings.HasPrefix(k, prefix) {
-			toremove = append(toremove, k)
-		}
-	}
-	for _, k := range toremove {
-		delete(s.Floats, k)
-	}
-	toremove = []string{}
-	for k, _ := range s.Strings {
-		if strings.HasPrefix(k, prefix) {
-			toremove = append(toremove, k)
-		}
-	}
-	for _, k := range toremove {
-		delete(s.Strings, k)
-	}
-	toremove = []string{}
-	for k, _ := range s.Times {
-		if strings.HasPrefix(k, prefix) {
-			toremove = append(toremove, k)
-		}
-	}
-	for _, k := range toremove {
-		delete(s.Times, k)
-	}
-	toremove = []string{}
 }
 
-func (s *Instance) HasChanged() bool {
-	return s.Changes != 0
-}
-
-func (s *Instance) ResetChangeTracking() {
-	s.Changes = 0
-}
+// BOOLEAN
 
 func (s *Instance) HasBoolState(name string) bool {
-	_, exists := s.Strings[name]
+	_, exists := s.Properties[name]
 	return exists
 }
 func (s *Instance) GetBoolState(name string, theDefault bool) bool {
-	v, exists := s.Bools[name]
+	v, exists := s.Properties[name]
 	if exists {
-		return v
+		return v.Bool
 	}
-	s.Bools[name] = theDefault
+	s.Properties[name] = Property{Bool: theDefault}
 	return theDefault
 }
 func (s *Instance) SetBoolState(name string, state bool) (bool, bool) {
-	v, exists := s.Bools[name]
-	s.Bools[name] = state
+	v, exists := s.Properties[name]
 	if !exists {
-		v = state
-		s.Changes++
-	} else if v != state {
-		s.Changes++
+		v = Property{Bool: state}
+	} else if v.Bool != state {
+		v.Bool = state
 	}
-	return v, exists
+	return v.Bool, exists
 }
 
-func (s *Instance) HasStringState(name string) bool {
-	_, exists := s.Strings[name]
-	return exists
-}
-func (s *Instance) GetStringState(name string, theDefault string) string {
-	str, exists := s.Strings[name]
-	if exists {
-		return str
-	}
-	s.Strings[name] = theDefault
-	return theDefault
-}
-func (s *Instance) SetStringState(name string, state string) (string, bool) {
-	str, exists := s.Strings[name]
-	s.Strings[name] = state
-	if !exists {
-		str = state
-		s.Changes++
-	} else if str != state {
-		s.Changes++
-	}
-	return str, exists
-}
+// FLOAT
 
 func (s *Instance) HasFloatState(name string) bool {
-	_, exists := s.Floats[name]
+	_, exists := s.Properties[name]
 	return exists
 }
 func (s *Instance) GetFloatState(name string, theDefault float64) float64 {
-	f, exists := s.Floats[name]
+	v, exists := s.Properties[name]
 	if exists {
-		return f
+		return v.Float
 	}
-	s.Floats[name] = theDefault
+	s.Properties[name] = Property{Float: theDefault}
 	return theDefault
 }
 func (s *Instance) SetFloatState(name string, state float64) (float64, bool) {
-	f, exists := s.Floats[name]
-	s.Floats[name] = state
+	v, exists := s.Properties[name]
 	if !exists {
-		f = state
-		s.Changes++
-	} else if f != state {
-		s.Changes++
+		v = Property{Float: state}
+	} else if v.Float != state {
+		v.Float = state
 	}
-	return f, exists
+	return v.Float, exists
 }
 
+// STRING
+
+func (s *Instance) HasStringState(name string) bool {
+	_, exists := s.Properties[name]
+	return exists
+}
+func (s *Instance) GetStringState(name string, theDefault string) string {
+	v, exists := s.Properties[name]
+	if exists {
+		return v.String
+	}
+	s.Properties[name] = Property{String: theDefault}
+	return theDefault
+}
+func (s *Instance) SetStringState(name string, state string) (string, bool) {
+	v, exists := s.Properties[name]
+	if !exists {
+		v = Property{String: state}
+	} else if v.String != state {
+		v.String = state
+	}
+	return v.String, exists
+}
+
+// TIME
+
 func (s *Instance) HasTimeState(name string) bool {
-	_, exists := s.Times[name]
+	_, exists := s.Properties[name]
 	return exists
 }
 func (s *Instance) GetTimeState(name string, theDefault time.Time) time.Time {
-	t, exists := s.Times[name]
+	v, exists := s.Properties[name]
 	if exists {
-		return t
+		return v.Time
 	}
-	s.Times[name] = theDefault
+	s.Properties[name] = Property{Time: theDefault}
 	return theDefault
 }
 func (s *Instance) SetTimeState(name string, state time.Time) (time.Time, bool) {
-	t, exists := s.Times[name]
-	s.Times[name] = state
+	v, exists := s.Properties[name]
 	if !exists {
-		t = state
-		s.Changes++
-	} else if state != t {
-		s.Changes++
+		v = Property{Time: state}
+	} else if v.Time != state {
+		v.Time = state
 	}
-	return t, exists
+	return v.Time, exists
 }
 
-// DOMAIN
+// PRINT
 
-func (d *Domain) HasBoolState(domain, name string) bool {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	_, exists = s.Bools[name]
-	return exists
-}
-func (d *Domain) GetBoolState(domain, name string, defaultBool bool) bool {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	b, exists := s.Bools[name]
-	if exists {
-		return b
-	}
-	s.Bools[name] = defaultBool
-	return defaultBool
-}
-func (d *Domain) SetBoolState(domain, name string, state bool) (bool, bool) {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	b, exists := s.Bools[name]
-	if !exists {
-		b = state
-		s.Changes++
-	} else if b != state {
-		s.Changes++
-	}
-	s.Bools[name] = state
-	return b, exists
-}
-
-func (d *Domain) HasStringState(domain, name string) bool {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	_, exists = s.Strings[name]
-	return exists
-}
-func (d *Domain) GetStringState(domain, name string, theDefault string) string {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	str, exists := s.Strings[name]
-	if exists {
-		return str
-	}
-	s.Strings[name] = theDefault
-	return theDefault
-}
-func (d *Domain) SetStringState(domain, name string, state string) (string, bool) {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	str, exists := s.Strings[name]
-	if !exists {
-		str = state
-		s.Changes++
-	} else if str != state {
-		s.Changes++
-	}
-	s.Strings[name] = state
-	return str, exists
-}
-
-func (d *Domain) HasFloatState(domain, name string) bool {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	_, exists = s.Floats[name]
-	return exists
-}
-func (d *Domain) GetFloatState(domain, name string, theDefault float64) float64 {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	f, exists := s.Floats[name]
-	if exists {
-		return f
-	}
-	s.Floats[name] = theDefault
-	return theDefault
-}
-func (d *Domain) SetFloatState(domain, name string, state float64) (float64, bool) {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	f, exists := s.Floats[name]
-	if !exists {
-		f = state
-		s.Changes++
-	} else if state != f {
-		s.Changes++
-	}
-	s.Floats[name] = state
-	return f, exists
-}
-
-func (d *Domain) HasTimeState(domain, name string) bool {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	_, exists = s.Times[name]
-	return exists
-}
-func (d *Domain) GetTimeState(domain, name string, theDefault time.Time) time.Time {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	t, exists := s.Times[name]
-	if exists {
-		return t
-	}
-	s.Times[name] = theDefault
-	return theDefault
-}
-func (d *Domain) SetTimeState(domain, name string, state time.Time) (time.Time, bool) {
-	s, exists := d.Domain[domain]
-	if !exists {
-		s = d.Add(domain)
-	}
-	t, exists := s.Times[name]
-	if !exists {
-		t = state
-		s.Changes++
-	} else if t != state {
-		s.Changes++
-	}
-	s.Times[name] = state
-	return t, exists
-}
-
-func (d *Domain) Print() {
-	for k, v := range d.Domain {
-		v.Print(k)
-	}
-}
-func (d *Domain) PrintChanged() {
-	for k, v := range d.Domain {
-		if v.HasChanged() {
-			v.Print(k)
+func (s *Instance) PrintNamed(domain string) {
+	for k, v := range s.Properties {
+		if strings.HasPrefix(k, domain) {
+			fmt.Printf("%s = (bool)%v / (float)%.2f / (time)%v \n", k, v.Bool, v.Float, v.String, v.Time)
 		}
 	}
-}
-func (d *Domain) PrintNamed(domain string) {
-	s, exists := d.Domain[domain]
-	if exists {
-		s.Print(domain)
-	}
-}
-
-func (s *Instance) Print(header string) {
-	for k, v := range s.Bools {
-		fmt.Printf("%s : %s = (bool)%v\n", header, k, v)
-	}
-	for k, v := range s.Floats {
-		fmt.Printf("%s : %s = (float)%f\n", header, k, v)
-	}
-	for k, v := range s.Strings {
-		lines := strings.Split(v, "\n")
-		for ln, line := range lines {
-			if ln == 0 {
-				fmt.Printf("%s : %s = '%s'\n", header, k, line)
-			} else {
-				fmt.Printf("     %s\n", line)
+	for k, v := range s.Properties {
+		if strings.HasPrefix(k, domain) {
+			if len(v.String) > 0 {
+				lines := strings.Split(v.String, "\n")
+				for ln, line := range lines {
+					if ln == 0 {
+						fmt.Printf("%s = '%s'\n", k, line)
+					} else {
+						fmt.Printf("     %s\n", line)
+					}
+				}
 			}
 		}
 	}
-	for k, v := range s.Times {
-		fmt.Printf("%s : %s = %v\n", header, k, v)
+}
+
+func (s *Instance) Print() {
+	for k, v := range s.Properties {
+		fmt.Printf("%s = (bool)%v / (float)%.2f / (time)%v \n", k, v.Bool, v.Float, v.String, v.Time)
+	}
+	for k, v := range s.Properties {
+		if len(v.String) > 0 {
+			lines := strings.Split(v.String, "\n")
+			for ln, line := range lines {
+				if ln == 0 {
+					fmt.Printf("%s = '%s'\n", k, line)
+				} else {
+					fmt.Printf("     %s\n", line)
+				}
+			}
+		}
 	}
 }
