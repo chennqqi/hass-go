@@ -180,16 +180,16 @@ func (l *Instance) Process(states *state.Instance) time.Duration {
 
 	// Add our custom time-points
 	for _, at := range l.addtimes {
-		t := states.GetTimeState("sun."+at.name, now)
+		t := states.GetTimeState("suncalc."+at.name, now)
 		t = t.Add(at.shift)
-		states.SetTimeState("sun."+at.name+at.tag, t)
+		states.SetTimeState("suncalc."+at.name+at.tag, t)
 	}
 
 	current := lighttime{}
 	currentx := 0.0 // Time interpolation factor, where are we between startMoment - endMoment
 	for _, lt := range l.lighttable {
-		t0 := states.GetTimeState("sun."+lt.startMoment, now)
-		t1 := states.GetTimeState("sun."+lt.endMoment, now)
+		t0 := states.GetTimeState("suncalc."+lt.startMoment, now)
+		t1 := states.GetTimeState("suncalc."+lt.endMoment, now)
 		if inTimeSpan(t0, t1, now) {
 			current = lt
 			currentx = computeTimeSpanX(t0, t1, now)
@@ -253,10 +253,15 @@ func (l *Instance) Process(states *state.Instance) time.Duration {
 		lbri := ltype.minBRI + BRI*(ltype.maxBRI-ltype.minBRI)
 		states.SetFloatState("lighting.lights_"+ltype.name+"_ct", math.Floor(lct))
 		states.SetFloatState("lighting.lights_"+ltype.name+"_bri", math.Floor(lbri))
+		states.SetStringState("lighting.lights_"+ltype.name+"_ct", fmt.Sprintf("%f", math.Floor(lct)))
+		states.SetStringState("lighting.lights_"+ltype.name+"_bri", fmt.Sprintf("%f", math.Floor(lbri)))
 	}
 
 	states.SetFloatState("lighting.lights_ct", float64(int64(CT*100.0))/100.0)
 	states.SetFloatState("lighting.lights_bri", float64(int64(BRI*100.0))/100.0)
+	states.SetStringState("lighting.lights_ct", fmt.Sprintf("%f", float64(int64(CT*100.0))/100.0))
+	states.SetStringState("lighting.lights_bri", fmt.Sprintf("%f", float64(int64(BRI*100.0))/100.0))
+
 	states.SetStringState("lighting.darklight", current.darkorlight)
 
 	return 30 * time.Second

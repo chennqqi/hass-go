@@ -26,10 +26,11 @@ func postHttpSensor(url string, body string) (err error) {
 }
 
 type Instance struct {
-	viper *viper.Viper
-	url   string
-	vars  map[string]string
-	body  string
+	viper   *viper.Viper
+	url     string
+	vars    map[string]string
+	body    string
+	sensors []string
 }
 
 // New will return a new instance of 'Sensors'
@@ -45,7 +46,7 @@ func New() (*Instance, error) {
 		return nil, err
 	}
 
-	sensor := dynamic.Dynamic{Item: s.viper.Get("sensor")}
+	sensor := dynamic.Dynamic{Item: s.viper.Get("hass")}
 	s.url = sensor.Get("url").AsString()
 	s.body = sensor.Get("body").AsString()
 	vars := sensor.Get("vars")
@@ -55,18 +56,23 @@ func New() (*Instance, error) {
 		s.vars[kv[0]] = kv[1]
 	}
 
+	sensors := sensor.Get("sensors")
+	s.sensors = []string{}
+	for _, v := range sensors.ArrayIter() {
+		s.sensors = append(s.sensors, v.AsString())
+	}
+
 	return s, nil
 }
 
 func (c *Instance) Process(states *state.Instance) time.Duration {
 
-	for sn, _ := range states.Properties {
-		if strings.HasPrefix(sn, "hass.") {
-			sn = strings.Replace(sn, "hass.", "sensor.", 1)
+	for _, sn := range c.sensors {
+		if states.HasStringState(sn) {
 			surl := c.url
 			sbody := c.body
 			for vk, vv := range c.vars {
-				vval := states.GetStringState(sn+"."+vk, "") // Sensor value in string format
+				vval := states.GetStringState(sn+"."+vk, "?") // Sensor value in string format
 				surl = strings.Replace(surl, vv, vval, 1)
 				sbody = strings.Replace(sbody, vv, vval, 1)
 			}

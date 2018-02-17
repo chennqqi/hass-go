@@ -15,13 +15,13 @@ type Property struct {
 
 // Instance holds all state of our components in multiple 'map's
 type Instance struct {
-	Properties map[string]Property
+	Properties map[string]*Property
 }
 
 // New constructs a new Instance
 func New() *Instance {
 	s := &Instance{}
-	s.Properties = map[string]Property{}
+	s.Properties = map[string]*Property{}
 	return s
 }
 
@@ -52,13 +52,14 @@ func (s *Instance) GetBoolState(name string, theDefault bool) bool {
 	if exists {
 		return v.Bool
 	}
-	s.Properties[name] = Property{Bool: theDefault}
+	s.Properties[name] = &Property{Bool: theDefault}
 	return theDefault
 }
 func (s *Instance) SetBoolState(name string, state bool) (bool, bool) {
 	v, exists := s.Properties[name]
 	if !exists {
-		v = Property{Bool: state}
+		v = &Property{Bool: state}
+		s.Properties[name] = v
 	} else if v.Bool != state {
 		v.Bool = state
 	}
@@ -76,13 +77,14 @@ func (s *Instance) GetFloatState(name string, theDefault float64) float64 {
 	if exists {
 		return v.Float
 	}
-	s.Properties[name] = Property{Float: theDefault}
+	s.Properties[name] = &Property{Float: theDefault}
 	return theDefault
 }
 func (s *Instance) SetFloatState(name string, state float64) (float64, bool) {
 	v, exists := s.Properties[name]
 	if !exists {
-		v = Property{Float: state}
+		v = &Property{Float: state}
+		s.Properties[name] = v
 	} else if v.Float != state {
 		v.Float = state
 	}
@@ -100,13 +102,14 @@ func (s *Instance) GetStringState(name string, theDefault string) string {
 	if exists {
 		return v.String
 	}
-	s.Properties[name] = Property{String: theDefault}
+	s.Properties[name] = &Property{String: theDefault}
 	return theDefault
 }
 func (s *Instance) SetStringState(name string, state string) (string, bool) {
 	v, exists := s.Properties[name]
 	if !exists {
-		v = Property{String: state}
+		v = &Property{String: state}
+		s.Properties[name] = v
 	} else if v.String != state {
 		v.String = state
 	}
@@ -124,13 +127,14 @@ func (s *Instance) GetTimeState(name string, theDefault time.Time) time.Time {
 	if exists {
 		return v.Time
 	}
-	s.Properties[name] = Property{Time: theDefault}
+	s.Properties[name] = &Property{Time: theDefault}
 	return theDefault
 }
 func (s *Instance) SetTimeState(name string, state time.Time) (time.Time, bool) {
 	v, exists := s.Properties[name]
 	if !exists {
-		v = Property{Time: state}
+		v = &Property{Time: state}
+		s.Properties[name] = v
 	} else if v.Time != state {
 		v.Time = state
 	}
@@ -142,12 +146,12 @@ func (s *Instance) SetTimeState(name string, state time.Time) (time.Time, bool) 
 func (s *Instance) PrintNamed(domain string) {
 	for k, v := range s.Properties {
 		if strings.HasPrefix(k, domain) {
-			fmt.Printf("%s = (bool)%v / (float)%.2f / (time)%v \n", k, v.Bool, v.Float, v.String, v.Time)
+			fmt.Printf("%s = (bool)%v / (float)%.2f / (time)%v \n", k, v.Bool, v.Float, v.Time)
 		}
 	}
 	for k, v := range s.Properties {
 		if strings.HasPrefix(k, domain) {
-			if len(v.String) > 0 {
+			if v.String != "" {
 				lines := strings.Split(v.String, "\n")
 				for ln, line := range lines {
 					if ln == 0 {
@@ -163,10 +167,10 @@ func (s *Instance) PrintNamed(domain string) {
 
 func (s *Instance) Print() {
 	for k, v := range s.Properties {
-		fmt.Printf("%s = (bool)%v / (float)%.2f / (time)%v \n", k, v.Bool, v.Float, v.String, v.Time)
+		fmt.Printf("%s = (bool)%v / (float)%.2f / (time)%v \n", k, v.Bool, v.Float, v.Time)
 	}
 	for k, v := range s.Properties {
-		if len(v.String) > 0 {
+		if v.String != "" {
 			lines := strings.Split(v.String, "\n")
 			for ln, line := range lines {
 				if ln == 0 {

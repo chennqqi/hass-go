@@ -262,9 +262,9 @@ func (c *Client) Process(states *state.Instance) time.Duration {
 		}
 	}
 
-	wait := time.Duration(c.update.Unix()-time.Now().Unix()) * time.Second
+	wait := time.Duration(c.update.Unix() - time.Now().Unix())
 	if wait < 0 {
 		wait = 0
 	}
-	return wait
+	return wait * time.Second
 }
